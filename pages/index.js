@@ -1,115 +1,297 @@
-import Image from "next/image";
-import { Geist, Geist_Mono } from "next/font/google";
+import React, { useContext, useEffect, useState } from 'react'
+import { useRouter } from "next/router";
+import { Api } from '@/services/service';
+import { Users, DollarSign, BarChart2, HelpCircle, TrendingUp, Package, ShoppingCart, AlertTriangle, Layers, FastForward, Plus, Boxes, BanknoteArrowDown, Pencil, ChartLine, ArchiveRestore, Warehouse, HandCoins } from 'lucide-react';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  Filler,
+} from "chart.js";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  Area,
+  AreaChart,
+  Tooltip as RechartsTooltip
+} from "recharts";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+import isAuth from '@/components/isAuth';
+import { userContext } from './_app';
+import ModernStatsCard from '@/components/modernstatcard';
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  Filler
+);
 
-export default function Home() {
+function Home(props) {
+  const router = useRouter();
+  const [user, setUser] = useContext(userContext);
+  const [AllData, setAllData] = useState({});
+  const [productList, setProductList] = useState([]);
+  const [lowStock, setLowStock] = useState([]);
+  const [timeRange, setTimeRange] = useState("monthly");
+  const [salesData, setSalesData] = useState([]);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  // Generate years dynamically
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
+
+  const [topSellingProducts, setTopSellingProducts] = useState([
+    {
+      name: "",
+      sold: "",
+      remaining: "",
+    },
+  ]);
+
+  useEffect(() => {
+    dashboarddetails();
+  }, []);
+
+  const dashboarddetails = async () => {
+    props.loader(true);
+    Api("get", "dashboarddetails", "", router).then(
+      (res) => {
+        console.log("res================>", res);
+        props.loader(false);
+        if (res?.status) {
+          setAllData(res?.data);
+        } else {
+          console.log(res?.data?.message);
+          props.toaster({ type: "error", message: res?.data?.message });
+        }
+      },
+      (err) => {
+        props.loader(false);
+        console.log(err);
+        props.toaster({ type: "error", message: err?.data?.message });
+        props.toaster({ type: "error", message: err?.message });
+      }
+    );
+  };
+
+  useEffect(() => {
+    const getMonthlySales = async () => {
+      props.loader(true);
+      Api("get", `getMonthlySales?year=${selectedYear}`, "", router).then(
+        (res) => {
+          console.log("res================>", res);
+          props.loader(false);
+          if (res?.status) {
+            setSalesData(res?.data);
+          } else {
+            console.log(res?.data?.message);
+            props.toaster({ type: "error", message: res?.data?.message });
+          }
+        },
+        (err) => {
+          props.loader(false);
+          console.log(err);
+          props.toaster({ type: "error", message: err?.data?.message });
+          props.toaster({ type: "error", message: err?.message });
+        }
+      );
+    };
+    getMonthlySales();
+  }, [selectedYear]);
+
+
+
+  const COLORS = ['#FE4F01', '#127300', '#1a1a1a', '#FFC107'];
+
   return (
-    <div
-      className={`${geistSans.className} ${geistMono.className} font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20`}
-    >
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              pages/index.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <section className="min-h-screen bg-gray-50 p-4 md:p-6 h-full overflow-y-scroll scrollbar-hide overflow-scroll md:pb-24 pb-24 ">
+      <div className="max-w-7xl mx-auto space-y-4">
+        <p className='md:text-[32px] text-2xl text-black font-bold'> Dashboard</p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <ModernStatsCard
+            title="Total Sales"
+            value={AllData?.totalUsers || "HTG 245,000"}
+            icon={<ChartLine size={45} />}
+            accentColor="#44DD22E3"
+            message="+12% from last month"
+            color="linear-gradient(0deg, #FF7000, #FF7000),
+linear-gradient(200.56deg, rgba(255, 255, 255, 0.4) 2.27%, rgba(255, 112, 0, 0.48) 36.15%);
+"
+
+          />
+          <ModernStatsCard
+            title="Pending Orders"
+            value={AllData?.totalCategories || "18"}
+            icon={<ArchiveRestore size={45} />}
+            accentColor="#44DD22E3"
+            message="5 need shipping today"
+            color="linear-gradient(0deg, rgba(0, 153, 255, 0.8), rgba(0, 153, 255, 0.8)),
+linear-gradient(201.29deg, rgba(255, 255, 255, 0.48) 9.55%, rgba(0, 153, 255, 0.64) 42.34%);
+"
+
+          />
+          <ModernStatsCard
+            title="Products in Stock"
+            value={`${AllData?.totalTransactionAmount || "152"}`}
+            icon={<Warehouse size={45} />}
+            accentColor="#E84F4F"
+            message="5 low-stock alerts"
+            color="linear-gradient(0deg, #FF7000, #FF7000),
+linear-gradient(200.56deg, rgba(255, 255, 255, 0.4) 2.27%, rgba(255, 112, 0, 0.48) 36.15%);
+"
+
+          />
+          <ModernStatsCard
+            title="Earnings"
+            value={AllData?.totalFeedbacks || "HTG 42,800"}
+            icon={<BanknoteArrowDown size={45} />}
+            accentColor="#44DD22E3"
+            message="Next payout: 5th Sept, 2025"
+            color="linear-gradient(0deg, rgba(0, 153, 255, 0.8), rgba(0, 153, 255, 0.8)),
+linear-gradient(201.29deg, rgba(255, 255, 255, 0.48) 9.55%, rgba(0, 153, 255, 0.64) 42.34%);
+"
+          />
+          <ModernStatsCard
+            title="Refund Requests"
+            value={AllData?.totalFeedbacks || "3"}
+            icon={<HandCoins size={45} />}
+            accentColor="#E84F4F"
+            message="2 pending review"
+            color="linear-gradient(0deg, #FF7000, #FF7000),
+linear-gradient(200.56deg, rgba(255, 255, 255, 0.4) 2.27%, rgba(255, 112, 0, 0.48) 36.15%);
+"
+          />
+          <ModernStatsCard
+            title="Payouts Completed"
+            value={AllData?.totalFeedbacks || "HTG 180,000"}
+            icon={<BanknoteArrowDown size={45} />}
+            accentColor="#0099FFCC"
+            message="Last payout: 25th Aug, 2025"
+            color="linear-gradient(0deg, rgba(0, 153, 255, 0.8), rgba(0, 153, 255, 0.8)),
+linear-gradient(201.29deg, rgba(255, 255, 255, 0.48) 9.55%, rgba(0, 153, 255, 0.64) 42.34%);
+"
+          />
+
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+          <div className="xl:col-span-2 bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden">
+            <div className="p-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-gray-500 mt-1">Sales Trend (Last 7 Days)</p>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <select
+                    className="bg-white text-gray-900 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#FE4F01] focus:border-transparent"
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                  >
+                    {years.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="flex  bg-custom-orange rounded-lg">
+                    <button className=" text-black px-4 py-2 text-sm font-medium">
+                      Monthly
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={salesData}>
+                  <defs>
+                    <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#FE4F01" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#FE4F01" stopOpacity={0.1} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="name" stroke="#6b7280" />
+                  <YAxis stroke="#6b7280" tickFormatter={(value) => `$${value}`} />
+                  <RechartsTooltip
+                    contentStyle={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      color: '#374151'
+                    }}
+                    formatter={(value) => [`$${value}`, "Revenue"]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="monthly"
+                    stroke="#FE4F01"
+                    strokeWidth={3}
+                    fill="url(#salesGradient)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-5 w-full max-w-sm">
+
+            <div className="flex items-center gap-2 mb-5">
+              <FastForward className="text-black" />
+              <p className="text-lg font-semibold text-black">Quick Actions</p>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex flex-col gap-3">
+              <button className="flex items-center gap-3 px-4 py-3 rounded-xl bg-orange-100 text-black font-medium shadow-sm hover:bg-orange-200 transition">
+                <Plus className="w-5 h-5" />
+                Add New Product
+              </button>
+
+              <button className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-300 text-black font-medium shadow-sm hover:bg-gray-100 transition">
+                <Boxes className="w-5 h-5" />
+                View Orders
+              </button>
+
+              <button className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-300 text-black font-medium shadow-sm hover:bg-gray-100 transition">
+                <BanknoteArrowDown className="w-5 h-5" />
+                Withdraw Earnings
+              </button>
+
+              <button className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-300 text-black font-medium shadow-sm hover:bg-gray-100 transition">
+                <Pencil className="w-5 h-5" />
+                Edit Store Profile
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
+
+export default isAuth(Home);
