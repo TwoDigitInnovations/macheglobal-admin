@@ -10,9 +10,26 @@ const isAuth = (Component) => {
       const user = localStorage.getItem("userDetail");
       const token = localStorage.getItem("token");
 
-      if (user && token) {
+      if (user) {
         const u = JSON.parse(user);
-        auth = u?.role === "Admin";
+        const token = localStorage.getItem("token");
+        if (
+          router?.pathname === "/" ||
+          router?.pathname === "/inventory" ||
+          router?.pathname === "/add-product" ||
+          router?.pathname === "/orders" ||
+          router?.pathname === "/Notification" ||
+          router?.pathname === "/SaleProduct" ||
+          router?.pathname === "/wallet"  ||
+          router?.pathname === "/AddSale"
+        ) {
+          auth =
+            token && (u?.role === "Admin" || u?.role === "Seller")
+              ? true
+              : false;
+        } else {
+          auth = token && u?.role === "Admin" ? true : false;
+        }
       }
     }
 

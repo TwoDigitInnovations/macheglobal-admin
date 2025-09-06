@@ -1,7 +1,8 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { useRouter } from "next/router";
 import { Api } from '@/services/service';
-import { Users, DollarSign, BarChart2, HelpCircle, TrendingUp, Package, ShoppingCart, AlertTriangle, Layers, FastForward, Plus, Boxes, BanknoteArrowDown, Pencil, ChartLine, ArchiveRestore, Warehouse, HandCoins } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { FastForward, Plus, Boxes, BanknoteArrowDown, Pencil, ChartLine, ArchiveRestore, Warehouse, HandCoins } from 'lucide-react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -15,8 +16,7 @@ import {
   Filler,
 } from "chart.js";
 import {
-  BarChart,
-  Bar,
+
   XAxis,
   YAxis,
   CartesianGrid,
@@ -33,7 +33,6 @@ import {
 
 import isAuth from '@/components/isAuth';
 import { userContext } from './_app';
-import ModernStatsCard from '@/components/modernstatcard';
 
 ChartJS.register(
   CategoryScale,
@@ -56,8 +55,6 @@ function Home(props) {
   const [timeRange, setTimeRange] = useState("monthly");
   const [salesData, setSalesData] = useState([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-
-  // Generate years dynamically
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
 
@@ -83,14 +80,13 @@ function Home(props) {
           setAllData(res?.data);
         } else {
           console.log(res?.data?.message);
-          props.toaster({ type: "error", message: res?.data?.message });
+          toast.error(res?.data?.message)
         }
       },
       (err) => {
         props.loader(false);
         console.log(err);
-        props.toaster({ type: "error", message: err?.data?.message });
-        props.toaster({ type: "error", message: err?.message });
+        toast.error(err?.data?.message || err?.message)
       }
     );
   };
@@ -105,15 +101,13 @@ function Home(props) {
           if (res?.status) {
             setSalesData(res?.data);
           } else {
-            console.log(res?.data?.message);
-            props.toaster({ type: "error", message: res?.data?.message });
+            toast.error(res?.data?.message)
           }
         },
         (err) => {
           props.loader(false);
           console.log(err);
-          props.toaster({ type: "error", message: err?.data?.message });
-          props.toaster({ type: "error", message: err?.message });
+          toast.error(err?.data?.message || err?.message)
         }
       );
     };
@@ -295,3 +289,37 @@ linear-gradient(201.29deg, rgba(255, 255, 255, 0.48) 9.55%, rgba(0, 153, 255, 0.
 }
 
 export default isAuth(Home);
+
+
+const ModernStatsCard = ({ title, value, icon, gradient, accentColor, color, message }) => {
+  return (
+    <div className="group relative bg-white/80 backdrop-blur-sm rounded-3xl px-4 py-5 shadow-xl border border-white/50 overflow-hidden transform transition-all duration-500 hover:scale-105 hover:shadow-2xl">
+
+      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`}></div>
+
+      <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-white/20 to-transparent rounded-full -translate-y-10 translate-x-10"></div>
+
+      <div className="relative z-10">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <p className="text-slate-600 text-[16px] font-semibold tracking-wide uppercase">{title}</p>
+            <p className="text-[36px] text-black mt-2  flex-wrap">{value}</p>
+            <p style={{ color: accentColor }} className="text-[14px] mt-2 flex-wrap">
+              {message}
+            </p>
+
+          </div>
+          <div
+            className="p-1 rounded-[6px] text-black shadow-lg transform group-hover:scale-110 transition-transform duration-300"
+            style={{ background: color }}
+          >
+            {icon}
+          </div>
+
+        </div>
+
+
+      </div>
+    </div>
+  );
+};

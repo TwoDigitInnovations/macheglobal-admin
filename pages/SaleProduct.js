@@ -13,6 +13,7 @@ import { Api } from "@/services/service";
 import { useRouter } from "next/router";
 import { userContext } from "./_app";
 import Swal from "sweetalert2";
+import { toast } from "react-toastify";
 
 function SaleProduct(props) {
   const router = useRouter();
@@ -21,14 +22,14 @@ function SaleProduct(props) {
   const [countdown, setCountdown] = useState({});
 
   useEffect(() => {
-    if (user?.id) {
+    if (user?._id) {
       getSales();
     }
   }, [user]);
 
   const getSales = async () => {
     props.loader(true);
-    Api("get", "getFlashSale", router).then(
+    Api("get", `sale/getFlashSale?SellerId=${user._id}`, router).then(
       (res) => {
         props.loader(false);
         if (res.status) {
@@ -38,7 +39,7 @@ function SaleProduct(props) {
       (err) => {
         props.loader(false);
         console.log(err);
-        props.toaster({ type: "error", message: err?.message });
+        toast.error(err?.message)
       }
     );
   };
@@ -63,7 +64,7 @@ function SaleProduct(props) {
       if (result.isConfirmed) {
         props.loader(true);
 
-        Api("delete", `deleteFlashSale/${saleId}`, {}, router).then(
+        Api("delete", `sale/deleteFlashSale/${saleId}`, {}, router).then(
           (res) => {
             props.loader(false);
             if (res.status) {
@@ -90,24 +91,22 @@ function SaleProduct(props) {
 
     Api(
       "put",
-      `toggleFlashSaleStatus/${saleId}`,
+      `sale/toggleFlashSaleStatus/${saleId}?SellerId=${user._id}`,
       { status: newStatus },
       router
     ).then(
       (res) => {
         props.loader(false);
         if (res.status) {
-          props.toaster({
-            type: "success",
-            message: `Sale ${newStatus.toLowerCase()} successfully`,
-          });
+          toast.success(`Sale ${newStatus.toLowerCase()} successfully`)
+          toast.suc
           getSales();
         }
       },
       (err) => {
         props.loader(false);
         console.log(err);
-        props.toaster({ type: "error", message: err?.message });
+        toast.error(err?.message)
       }
     );
   };
@@ -133,14 +132,11 @@ function SaleProduct(props) {
       if (result.isConfirmed) {
         props.loader(true);
 
-        Api("delete", "deleteAllFlashSales", {}, router).then(
+        Api("delete", "sale/deleteAllFlashSales", {}, router).then(
           (res) => {
             props.loader(false);
             if (res.status) {
-              props.toaster({
-                type: "success",
-                message: "All sales deleted successfully",
-              });
+              toast.success("All sales deleted successfully")
               getSales();
             }
           },
@@ -237,7 +233,7 @@ function SaleProduct(props) {
   return (
     <div className="w-full h-full bg-transparent md:pt-5 pt-5 px-4 overflow-y-scroll   scrollbar-hide overflow-scroll pb-28">
       <div className="md:pt-[0px] pt-[0px] h-full">
-        
+
         <div className="flex md:flex-row flex-col justify-between items-start mb-6 gap-4">
           <div className="flex items-center">
             <h1 className="text-black font-bold md:text-[32px] text-2xl">
@@ -246,7 +242,7 @@ function SaleProduct(props) {
           </div>
           <div className="flex gap-3">
             <button
-              className="flex items-center gap-2 text-black bg-custom-orange px-5 py-2.5 rounded-lg hover:bg-green-600 transition-colors"
+              className="flex items-center gap-2 text-black bg-custom-orange px-5 py-2.5 rounded-lg  transition-colors"
               onClick={() => router.push("/AddSale")}
             >
               <Plus className="h-5 w-5" />
@@ -281,7 +277,7 @@ function SaleProduct(props) {
                       {sale.status}
                     </div>
 
-                    
+
                     <div className="p-4 flex justify-center">
                       <div className="relative">
                         {sale?.variant?.image[0] ? (
@@ -296,7 +292,7 @@ function SaleProduct(props) {
                           </div>
                         )}
 
-                        <div className="absolute -bottom-2 -right-2 bg-[#127300] text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
+                        <div className="absolute -bottom-2 -right-2 bg-custom-orange text-black px-3 py-1 rounded-full text-sm font-bold shadow-lg">
                           ${sale.price}
                         </div>
 
@@ -313,7 +309,7 @@ function SaleProduct(props) {
                     </p>
 
                     <div className="flex items-center gap-2 mb-4">
-                      <span className="text-lg font-bold text-[#127300]">
+                      <span className="text-lg font-bold text-custom-orange">
                         ${sale.price}
                       </span>
                       {sale?.offerPrice &&
@@ -424,7 +420,7 @@ function SaleProduct(props) {
                       <button
                         onClick={() => toggleSaleStatus(sale._id, sale.status)}
                         className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${sale.status === "ACTIVE"
-                          ? "bg-[#127300] text-white hover:bg-green-600"
+                          ? "bg-custom-orange text-black "
                           : "bg-green-500 text-white hover:bg-green-600"
                           }`}
                       >

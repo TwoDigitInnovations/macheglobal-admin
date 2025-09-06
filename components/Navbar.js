@@ -27,7 +27,7 @@ const Navbar = ({ setOpenTab, openTab }) => {
       showCancelButton: true,
       confirmButtonText: "Yes",
       cancelButtonText: "No",
-      confirmButtonColor: "#127300",
+      confirmButtonColor: "#FF700099",
       customClass: {
         confirmButton: 'px-12 rounded-xl',
         title: 'text-[20px] text-black',
@@ -36,7 +36,7 @@ const Navbar = ({ setOpenTab, openTab }) => {
       },
       buttonsStyling: true,
       reverseButtons: true,
-      width: '320px'
+      width: '350px'
     }).then(function (result) {
       if (result.isConfirmed) {
         logOut();

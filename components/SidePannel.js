@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import { MdDashboard } from "react-icons/md";
 import { ImCross } from "react-icons/im";
 import { userContext } from "@/pages/_app";
@@ -11,13 +11,15 @@ import { FaShoppingBag } from "react-icons/fa";
 import { PiSignOutFill } from "react-icons/pi";
 import Swal from "sweetalert2";
 import { MdRateReview } from "react-icons/md";
-import { FaBlogger } from "react-icons/fa";
 import { MdContentPasteOff } from "react-icons/md";
 import { BiSolidOffer } from "react-icons/bi";
+import { IoIosArrowDown, IoIosArrowForward } from "react-icons/io";
 
 const SidePannel = ({ setOpenTab, openTab }) => {
   const [user, setUser] = useContext(userContext);
   const router = useRouter();
+  const [openMenu, setOpenMenu] = useState(null); // desktop submenu state
+  const [mobileOpenMenu, setMobileOpenMenu] = useState(null); // mobile submenu state
 
   const logOut = () => {
     setUser({});
@@ -31,13 +33,17 @@ const SidePannel = ({ setOpenTab, openTab }) => {
       href: "/",
       title: "Dashboard",
       img: <MdDashboard className="text-3xl" />,
-      access: ["Admin","Seller"],
+      access: ["Admin", "Seller"],
     },
     {
-      href: "/sellers",
+      // href: "/sellers",
       title: "Sellers",
       img: <AiFillProduct className="text-3xl" />,
       access: ["Admin"],
+      children: [
+        { href: "/sellers", title: "Sellers List" },
+        { href: "/sellers/seller-orders", title: "Seller Orders" },
+      ],
     },
     {
       href: "/inventory",
@@ -69,7 +75,6 @@ const SidePannel = ({ setOpenTab, openTab }) => {
       img: <MdRateReview className="text-3xl" />,
       access: ["Admin"],
     },
-    
     {
       href: "/ContentManagement",
       title: "Our Content ",
@@ -102,6 +107,7 @@ const SidePannel = ({ setOpenTab, openTab }) => {
 
   return (
     <>
+      {/* ----------------- Desktop Sidebar ----------------- */}
       <div className="xl:w-[280px] fixed top-0 left-0 z-20 md:w-[250px] sm:w-[200px] hidden sm:grid grid-rows-5 overflow-hidden">
         <div>
           <div className="bg-white py-5 overflow-y-scroll h-screen scrollbar-hide">
@@ -109,11 +115,6 @@ const SidePannel = ({ setOpenTab, openTab }) => {
               className="bg-white pt-5 pb-5 row-span-1 flex items-center justify-center cursor-pointer mx-5 rounded"
               onClick={() => router.push("/")}
             >
-              {/* <img
-                src="/logo.png"
-                alt="Logo"
-                className="w-[202px] h-[52px] object-contain"
-              /> */}
               <p className="text-3xl text-black font-bold"> LOGO</p>
             </div>
 
@@ -121,20 +122,48 @@ const SidePannel = ({ setOpenTab, openTab }) => {
               <ul className="w-full flex flex-col text-left mt-5">
                 {menuItems.map((item, i) =>
                   item?.access?.includes(user?.role) ? (
-                    <Link
-                      href={item.href}
-                      key={i}
-                      className={`flex items-center mx-5 px-8 cursor-pointer group hover:bg-[#FF700099] hover:text-black m-1 ${
-                        router.pathname === item.href
-                          ? "bg-custom-orange text-black rounded-[8px]"
-                          : "text-black"
-                      }`}
-                    >
-                      <div className="py-3 font-semibold flex items-center gap-4">
-                        {/* <div className="w-6">{item?.img}</div> */}
-                        {item?.title}
+                    <li key={i} className="w-full">
+                      <div
+                        className={`flex items-center justify-between mx-5 px-6 cursor-pointer group hover:bg-[#FF700099] hover:text-black m-1 ${
+                          router.pathname === item.href
+                            ? "bg-custom-orange text-black rounded-[8px]"
+                            : "text-black"
+                        }`}
+                        onClick={() =>
+                          item.children
+                            ? setOpenMenu(openMenu === i ? null : i)
+                            : router.push(item.href)
+                        }
+                      >
+                        <div className="py-3 font-semibold flex items-center gap-4">
+                          {item?.title}
+                        </div>
+                        {item.children &&
+                          (openMenu === i ? (
+                            <IoIosArrowDown className="text-xl" />
+                          ) : (
+                            <IoIosArrowForward className="text-xl" />
+                          ))}
                       </div>
-                    </Link>
+
+                      {item.children && openMenu === i && (
+                        <ul className="mx-4  rounded-lg">
+                          {item.children.map((child, j) => (
+                            <Link
+                              href={child.href}
+                              key={j}
+                              className={`block py-3 px-10 m-1 font-semibold text-sm hover:bg-[#FF700099] rounded ${
+                                router.pathname === child.href
+                                  ? "bg-custom-orange text-black font-semibold"
+                                  : "text-gray-700"
+                              }`}
+                            >
+                              {child.title}
+                            </Link>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
                   ) : null
                 )}
               </ul>
@@ -143,7 +172,7 @@ const SidePannel = ({ setOpenTab, openTab }) => {
         </div>
       </div>
 
-    
+      {/* ----------------- Mobile Sidebar ----------------- */}
       <div
         className={`w-full absolute top-0 left-0 z-40 sm:hidden flex flex-col h-screen max-h-screen overflow-hidden bg-white ${
           openTab ? "scale-x-100" : "scale-x-0"
@@ -156,11 +185,6 @@ const SidePannel = ({ setOpenTab, openTab }) => {
           />
           <div className="flex flex-col gap-3 w-full p-3">
             <div className="p-1 rounded overflow-hidden">
-              {/* <img
-                src="/logo.png"
-                alt="Logo"
-                className="w-[212px] h-[48px] object-contain"
-              /> */}
               <p className="text-3xl text-black font-bold"> LOGO</p>
             </div>
             <div className="flex ms-2 justify-between">
@@ -204,14 +228,14 @@ const SidePannel = ({ setOpenTab, openTab }) => {
                       });
                     }}
                   >
-                    <div className="text-white font-bold">Sign Out</div>
+                    <div className="text-black font-bold">Sign Out</div>
                     <div className="rounded-full">
-                      <PiSignOutFill className="text-3xl text-white" />
+                      <PiSignOutFill className="text-3xl text-black" />
                     </div>
                   </div>
                 ) : (
                   <Link href="/login">
-                    <div className="p-3 mt-3 items-center font-bold text-white">
+                    <div className="p-3 mt-3 items-center font-bold text-black">
                       LogIn
                     </div>
                   </Link>
@@ -227,15 +251,46 @@ const SidePannel = ({ setOpenTab, openTab }) => {
               item?.access?.includes(user?.role) ? (
                 <li
                   key={i}
-                  className="w-full flex items-center text-black cursor-pointer group hover:bg-black border-b-2 border-black"
+                  className="w-full text-black border-b-2 border-black"
                 >
                   <div
-                    className="py-2 pl-6 font-semibold flex items-center gap-4"
-                    onClick={() => setOpenTab(!openTab)}
+                    className="flex justify-between items-center w-full px-6 py-3 cursor-pointer hover:bg-gray-100"
+                    onClick={() =>
+                      item.children
+                        ? setMobileOpenMenu(mobileOpenMenu === i ? null : i)
+                        : (setOpenTab(false), router.push(item.href))
+                    }
                   >
-                    <div className="w-6">{item?.img}</div>
-                    <Link href={item.href}>{item?.title}</Link>
+                    <div className="flex items-center gap-4 font-semibold">
+                      {item?.img}
+                      {item?.title}
+                    </div>
+                    {item.children &&
+                      (mobileOpenMenu === i ? (
+                        <IoIosArrowDown className="text-xl" />
+                      ) : (
+                        <IoIosArrowForward className="text-xl" />
+                      ))}
                   </div>
+
+                  {item.children && mobileOpenMenu === i && (
+                    <ul className="bg-[#f9f9f9]">
+                      {item.children.map((child, j) => (
+                        <Link
+                          href={child.href}
+                          key={j}
+                          className={`block py-2 pl-14 text-sm hover:bg-[#FF700099] ${
+                            router.pathname === child.href
+                              ? "bg-custom-orange text-black"
+                              : "text-gray-700"
+                          }`}
+                          onClick={() => setOpenTab(false)}
+                        >
+                          {child.title}
+                        </Link>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               ) : null
             )}

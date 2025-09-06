@@ -75,12 +75,12 @@ function Queries(props) {
         setPagination(res?.pagination);
         setCurrentPage(res?.pagination?.currentPage);
       } else {
-        props.toaster({ type: "error", message: res?.data?.message || "Failed to fetch queries" });
+        toast.error(err?.data?.message || err?.data?.message || "Failed to fetch queries")
       }
     } catch (err) {
       props.loader(false);
       setIsLoading(false);
-      props.toaster({ type: "error", message: err?.data?.message || err?.message || "An error occurred" });
+      toast.error(err?.data?.message || err?.message || "An error occurred")
     }
   };
 
@@ -120,8 +120,7 @@ function Queries(props) {
       })
       .catch((err) => {
         props.loader(false);
-        console.error("API Error:", err);
-        props.toaster({ type: "error", message: err?.message || "Something went wrong" });
+        toast.error(err?.message || "An error occurred")
       });
   };
 

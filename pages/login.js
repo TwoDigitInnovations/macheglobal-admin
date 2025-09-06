@@ -69,9 +69,9 @@ export default function Login(props) {
 
       <div className="relative w-full max-w-md">
         {/* Main Login Card */}
-        <div className="bg-white backdrop-blur-sm shadow-2xl rounded-3xl p-8 transform hover:scale-[1.02] transition-all duration-300">
+        <div className="bg-white backdrop-blur-sm shadow-2xl rounded-3xl md:p-8 p-5 transform hover:scale-[1.02] transition-all duration-300">
           {/* Logo Section */}
-          <div className="text-center mb-8">
+          <div className="text-center md:mb-8 mb-4">
             <div className="flex items-center justify-center mb-4">
               <div className="flex items-center space-x-2">
                 <div className="text-left text-4xl p-2 rounded text-black font-bold">
@@ -79,8 +79,8 @@ export default function Login(props) {
                 </div>
               </div>
             </div>
-            <h1 className="text-2xl font-bold text-gray-800 mb-2">Welcome Back!</h1>
-            <p className="text-gray-600 text-sm">Sign in to access your dashboard</p>
+            <h1 className="md:text-2xl text-xl font-bold text-gray-800 mb-2">Welcome Back!</h1>
+            <p className="text-gray-600 md:text-sm text-[12px]">Sign in to access your dashboard</p>
           </div>
 
           {/* Form */}
@@ -95,7 +95,7 @@ export default function Login(props) {
                 <input
                   type="email"
                   placeholder="Enter your email"
-                  className={`w-full pl-10 pr-4 py-3 border text-neutral-700 rounded-xl focus:ring-2 focus:ring-4EB0CF focus:border-transparent outline-none transition-all duration-200 ${submitted && !userDetail.email
+                  className={`w-full pl-10 pr-4 py-3 md:text-[16px] text-[14px] border text-neutral-700 rounded-xl focus:ring-2 focus:ring-4EB0CF focus:border-transparent outline-none transition-all duration-200 ${submitted && !userDetail.email
                     ? "border-red-500 bg-red-50"
                     : "border-gray-300 focus:bg-white"
                     }`}
@@ -122,7 +122,7 @@ export default function Login(props) {
                 <input
                   type={showPass ? "text" : "password"}
                   placeholder="Enter your password"
-                  className={`w-full pl-10 text-neutral-700 pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-4EB0CF focus:border-transparent outline-none transition-all duration-200 ${submitted && !userDetail.password
+                  className={`w-full pl-10 text-neutral-700 md:text-[16px] text-[14px] pr-12 py-3 border rounded-xl focus:ring-2 focus:ring-4EB0CF focus:border-transparent outline-none transition-all duration-200 ${submitted && !userDetail.password
                     ? "border-red-500 bg-red-50"
                     : "border-gray-300 focus:bg-white"
                     }`}
@@ -176,7 +176,7 @@ export default function Login(props) {
           </div>
 
           <div className="mt-8 text-center">
-            <p className="text-xs text-gray-500">© 2025 MacheGlobal(Marketplace)  All rights reserved.</p>
+            <p className="text-xs text-gray-500">© 2025 MacheGlobal(Marketplace) All rights reserved.</p>
           </div>
         </div>
 

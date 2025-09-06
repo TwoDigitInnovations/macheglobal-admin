@@ -16,6 +16,8 @@ import {
 import { Api } from "@/services/service";
 import { useRouter } from "next/router";
 import Swal from "sweetalert2";
+import { toast } from "react-toastify";
+
 
 function Queries(props) {
   const [queries, setQueries] = useState([]);
@@ -54,14 +56,13 @@ function Queries(props) {
         if (res?.status) {
         } else {
           console.log(res?.data?.message);
-          props.toaster({ type: "error", message: res?.data?.message });
+          toast.error(res?.data?.message || "An error occurred")
         }
       },
       (err) => {
         props.loader(false);
         console.log(err);
-        props.toaster({ type: "error", message: err?.data?.message });
-        props.toaster({ type: "error", message: err?.message });
+        toast.error(err?.data?.message || err?.message)
       }
     );
   };
@@ -196,22 +197,18 @@ function Queries(props) {
           (res) => {
             console.log("res================>", res.data?.meaasge);
             props.loader(false);
-            props.toaster({
-              type: "success",
-              message: "Review deleted successfully",
-            });
+            toast.success("Review deleted successfully")
             if (res?.status) {
               getAllQuries();
             } else {
               console.log(res?.data?.message);
-              props.toaster({ type: "error", message: res?.data?.meaasge });
+              toast.error(res?.data?.meaasge)
             }
           },
           (err) => {
             props.loader(false);
             console.log(err);
-            props.toaster({ type: "error", message: err?.data?.meaasge });
-            props.toaster({ type: "error", message: err?.meaasge });
+            toast.error(err?.data?.meaasge || err?.message)
           }
         );
       } else if (result.isDenied) {
@@ -278,27 +275,27 @@ function Queries(props) {
               style={{ borderColor: primaryColor }}
             ></div>
           </div>
-        ) : 
-        sampleReviews.length == 0 ? (
-          <div className="flex flex-col justify-center items-center p-20 text-center">
-            <div className="w-32 h-32 mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-              <Package size={48} className="text-[#FF700099]" />
+        ) :
+          sampleReviews.length == 0 ? (
+            <div className="flex flex-col justify-center items-center p-20 text-center">
+              <div className="w-32 h-32 mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                <Package size={48} className="text-[#FF700099]" />
+              </div>
+              <h3 className="text-xl font-medium text-gray-700 mb-1">
+                No reviews found
+              </h3>
+              <p className="text-gray-500">
+                Try adjusting your filters or search terms
+              </p>
             </div>
-            <h3 className="text-xl font-medium text-gray-700 mb-1">
-              No reviews found
-            </h3>
-            <p className="text-gray-500">
-              Try adjusting your filters or search terms
-            </p>
-          </div>
-        ) : 
-        (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 md:gap-6 gap-4">
-            {sampleReviews.map((review) => (
-              <ReviewCard key={review._id} review={review} />
-            ))}
-          </div>
-        )}
+          ) :
+            (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 md:gap-6 gap-4">
+                {sampleReviews.map((review) => (
+                  <ReviewCard key={review._id} review={review} />
+                ))}
+              </div>
+            )}
       </div>
 
       {/* View Details Popup */}

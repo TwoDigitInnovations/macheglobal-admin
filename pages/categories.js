@@ -7,6 +7,8 @@ import Swal from "sweetalert2";
 import isAuth from "@/components/isAuth";
 import { Edit, Pencil, Trash } from "lucide-react";
 import { toast } from "react-toastify";
+
+
 function Categories(props) {
   const router = useRouter();
   const categoryRef = useRef();
@@ -91,7 +93,8 @@ function Categories(props) {
       setNotAvailableSubCategory(false)
       getAllCategories();
     } catch (err) {
-      props.toaster({ type: "error", message: err?.message });
+
+      toast.error(err?.message)
     }
   };
 
@@ -118,7 +121,7 @@ function Categories(props) {
       setHideCategory(true);
       getAllCategories();
     } catch (err) {
-      props.toaster({ type: "error", message: err?.message });
+      toast.error(err?.message)
     }
   };
 
@@ -140,7 +143,7 @@ function Categories(props) {
         toast.success("Category Deleted")
         getAllCategories();
       } catch (err) {
-        props.toaster({ type: "error", message: err?.message });
+        toast.error(err?.message)
       }
     }
   };
@@ -161,7 +164,7 @@ function Categories(props) {
         await Api("delete", `category/deleteSubcategory`, data, router);
         getAllCategories();
       } catch (err) {
-        props.toaster({ type: "error", message: err?.message });
+        toast.error(err?.message)
       }
     }
   };
