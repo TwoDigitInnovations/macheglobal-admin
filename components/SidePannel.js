@@ -94,15 +94,21 @@ const SidePannel = ({ setOpenTab, openTab }) => {
       access: ["Seller"],
     },
     {
-      href: "/wallet",
+      href: "/sellerWallet",
       title: "Wallet",
       img: <BiSolidOffer className="text-3xl" />,
       access: ["Seller"],
     },
+    {
+      href: "/adminWallet",
+      title: "Wallet",
+      img: <BiSolidOffer className="text-3xl" />,
+      access: ["Admin"],
+    },
   ];
 
   const imageOnError = (event) => {
-    event.currentTarget.src = "/userprofile.png";
+    // event.currentTarget.src = "/userprofile.png";
   };
 
   return (

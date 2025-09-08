@@ -7,10 +7,11 @@ import { ToastContainer } from "react-toastify";
 
 export const userContext = createContext();
 export const dataContext = createContext();
+
 export default function App({ Component, pageProps }) {
   const [user, setUser] = useState({});
   const [data, setData] = useState({});
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false); // loader state
   const [toast, setToast] = useState({
     type: "",
     message: "",
@@ -43,11 +44,13 @@ export default function App({ Component, pageProps }) {
 
   return (
     <>
-      {" "}
       <dataContext.Provider value={[data, setData]}>
         <userContext.Provider value={[user, setUser]}>
+          <Loader open={open} />
           <ToastContainer position="top-right" autoClose={3000} />
+
           <Layout loader={setOpen} toaster={setToast}>
+            <Loader open={open} />
             {user && (
               <Component
                 {...pageProps}
@@ -57,7 +60,7 @@ export default function App({ Component, pageProps }) {
               />
             )}
           </Layout>
-        </userContext.Provider>{" "}
+        </userContext.Provider>
       </dataContext.Provider>
     </>
   );

@@ -36,12 +36,12 @@ export default function Login(props) {
           localStorage.setItem("token", res.data?.token);
           setUser(user);
           setUserDetail({ email: "", password: "" });
-          toast.success("Login Successful")
+          toast.success(res.data.message)
           router.push("/");
           props.loader(false);
           setLoading(false);
         } else {
-          toast.error("You are not authorized")
+          toast.error(res.data.message || "You are not authorized")
         }
       } else {
         toast.error("Login failed")

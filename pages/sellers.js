@@ -102,7 +102,11 @@ function Sellers(props) {
     const updateStatus = async (id, status) => {
         setviewPopup(false);
         props.loader(true);
-        Api("post", `updateStore`, { id, status }, router).then(
+        const data = {
+            SellerId: id,
+            Status: status
+        }
+        Api("post", `user/updateStatusSeller`, data, router).then(
             (res) => {
                 props.loader(false);
                 console.log("res================>", res);
@@ -116,47 +120,6 @@ function Sellers(props) {
         );
     };
 
-    const exportData = async () => {
-        props.loader(true);
-        setviewPopup(false);
-        const data = {
-            reportTypes: selectedOptions,
-            id: selectedId,
-        };
-        ApiBlobData("post", `export/detailed-seller-report`, data, router).then(
-            (res) => {
-                props.loader(false);
-
-                const blob = new Blob([res.data], {
-                    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                });
-
-                const url = window.URL.createObjectURL(blob);
-
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "detailed-seller-report.xlsx";
-                a.click();
-                window.URL.revokeObjectURL(url);
-                props.toaster({
-                    type: "success",
-                    message: "Exported successfully",
-                });
-                setAnchorEl(null);
-                setSelectedOptions([]);
-                setSelectedId("");
-                setdriverdata([]);
-            },
-            (err) => {
-                props.loader(false);
-                console.log(err);
-                props.toaster({
-                    type: "error",
-                    message: err?.message || "Export failed",
-                });
-            }
-        );
-    };
 
 
     function name({ value }) {
@@ -289,6 +252,18 @@ function Sellers(props) {
         []
     );
 
+    const actionButtons = {
+        pending: [
+            { label: "Verify", status: "verified", color: "bg-custom-darkpurple" },
+            { label: "Suspend", status: "suspend", color: "bg-custom-darkRed" }
+        ],
+        verified: [
+            { label: "Suspend", status: "suspend", color: "bg-custom-darkRed" }
+        ],
+        suspend: [
+            { label: "Verify", status: "verified", color: "bg-red-500" }
+        ]
+    };
     return (
         <section className=" w-full h-full bg-transparent px-4 py-6">
             <p className="text-black font-bold  md:text-[32px] text-2xl">
@@ -299,12 +274,11 @@ function Sellers(props) {
                 <div className="bg-white border border-gray-200 w-full rounded-[10px] py-5 px-5 md:py-0 md:px-0">
                     <div className="flex flex-col md:flex-row md:justify-between justify-start items-start md:items-center w-full h-full py-3.5 md:px-4 ">
 
-                        {/* Search Input */}
                         <div className="flex md:items-center w-full ">
                             <div className="flex flex-col gap-1  md:pl-3 w-full">
                                 <p className="text-black text-[14px] font-normal">Search</p>
                                 <input
-                                    className="md:w-[300px] w-[280px] focus:ring ring-gray-700 border border-gray-200 bg-white  rounded-[30px] py-2.5 px-4 text-[13px] font-normal text-black outline-none"
+                                    className="md:w-[300px] w-[280px] focus:ring ring-gray-700 border border-gray-300 bg-white  rounded-[30px] py-2.5 px-4 text-[14px] font-normal text-black outline-none"
                                     type="text"
                                     placeholder="Search by Name, Email, Mobile"
                                     value={search}
@@ -348,8 +322,8 @@ function Sellers(props) {
                     <Dialog
                         open={viewPopup}
                         onClose={handleClose}
-                        maxWidth="500px"
-                    // fullScreen
+                        // maxWidth="600px"
+                        fullScreen
                     >
                         <div className="p-5 bg-white relative overflow-hidden">
                             <IoCloseCircleOutline
@@ -457,29 +431,29 @@ function Sellers(props) {
                                                 type: "Returns",
                                             });
                                         }} className="cursor-pointer col-span-2 flex gap-2 justify-start items-center w-full">
-                                            <p className="text-sm font-semibold text-gray-600">
+                                            {/* <p className="text-sm font-semibold text-gray-600">
                                                 Total Returned Items:
                                             </p>
                                             <p className="text-sm font-normal text-custom-black">
                                                 {popupData?.stats?.returnedItems}
-                                            </p>
+                                            </p> */}
                                         </div>
-                                        <div className="cursor-pointer col-span-2 flex gap-2 justify-start items-center w-full">
+                                        {/* <div className="cursor-pointer col-span-2 flex gap-2 justify-start items-center w-full">
                                             <p className="text-sm font-semibold text-gray-600">
                                                 Total Refunded Items:
                                             </p>
                                             <p className="text-sm font-normal text-custom-black">
                                                 {popupData?.stats?.refundedItems}
                                             </p>
-                                        </div>
-                                        <div className="cursor-pointer col-span-2 flex gap-2 justify-start items-center w-full">
+                                        </div> */}
+                                        {/* <div className="cursor-pointer col-span-2 flex gap-2 justify-start items-center w-full">
                                             <p className="text-sm font-semibold text-gray-600">
                                                 Total Refund Amount:
                                             </p>
                                             <p className="text-sm font-normal text-custom-black">
                                                 {(popupData?.stats?.totalRefundAmount)}
                                             </p>
-                                        </div>
+                                        </div> */}
                                         <div className="cursor-pointer col-span-2 flex gap-2 justify-start items-center w-full">
                                             <p className="text-sm font-semibold text-gray-600">
                                                 Total Income:
@@ -539,33 +513,26 @@ function Sellers(props) {
                                 ))}
                             </Swiper>
 
+
+
                             <div className="md:h-12">
-                                <div className="flex  mt-5  justify-center  gap-5">
-                                    {popupData?.status != "Verified" && (
+                                <div className="flex mt-5 justify-center gap-5">
+                                    {actionButtons[popupData?.status]?.map((btn, index) => (
                                         <button
-                                            className="text-white text-lg font-bold w-[274px] h-[50px] rounded-[12px] bg-custom-darkpurple"
-                                            onClick={() => {
-                                                updateStatus(popupData?._id, "Verified");
-                                            }}
+                                            key={index}
+                                            className={`text-black text-lg font-bold w-[274px] h-[50px] rounded-[12px] bg-amber-500`}
+                                            onClick={() => updateStatus(popupData?._id, btn.status)}
                                         >
-                                            Verify
+                                            {btn.label}
                                         </button>
-                                    )}
-                                    {popupData?.status != "Suspend" && (
-                                        <button
-                                            className="text-white text-lg font-bold w-[274px] h-[50px] rounded-[12px] bg-custom-darkRed"
-                                            onClick={() => {
-                                                updateStatus(popupData?._id, "Suspend");
-                                            }}
-                                        >
-                                            Suspend
-                                        </button>
-                                    )}
+                                    ))}
                                 </div>
                             </div>
+
                         </div>
                     </Dialog>
                 )}
+
                 <Dialog
                     open={newPopup}
                     onClose={handleClosePopup}

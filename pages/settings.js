@@ -5,7 +5,7 @@ import { IoCloseCircleOutline } from "react-icons/io5";
 import { Api, ApiFormData } from "@/services/service";
 import isAuth from "@/components/isAuth";
 import Compressor from "compressorjs";
-
+import { toast } from "react-toastify";
 
 function Settings(props) {
   const router = useRouter();
@@ -26,27 +26,22 @@ function Settings(props) {
     const file = event.target.files[0];
     if (!file) return;
     const fileSizeInMb = file.size / (1024 * 1024);
-    if (fileSizeInMb > 5) {
-      props.toaster({
-        type: "error",
-        message: "Too large file. Please upload a smaller image",
-      });
+    if (fileSizeInMb > 1) {
+      toast.error("Too large file. Please upload a under 1 Mb image")
       return;
     } else {
       new Compressor(file, {
         quality: 0.6,
         success: (compressedResult) => {
-          console.log(compressedResult);
           const data = new FormData();
           data.append("file", compressedResult);
           props.loader(true);
           ApiFormData("post", "user/fileupload", data, router).then(
             (res) => {
               props.loader(false);
-
               if (res.status) {
                 setSingleImg(res.data.fileUrl);
-                props.toaster({ type: "success", message: res.data.message });
+                toast.success(res?.message || "image Uploaded sucessfully")
               }
             },
             (err) => {
@@ -64,41 +59,38 @@ function Settings(props) {
     e.preventDefault();
 
     props.loader(true);
+
     let data = {
       carousel: carouselImg,
     };
 
     Api(
       "post",
-      "createOrUpdateImage",
+      "user/createOrUpdateImage",
       data,
       router
     ).then(
       (res) => {
-
         props.loader(false);
-
         if (res?.success) {
           setSubmitted(false);
-          props.toaster({ type: "success", message: res?.message });
+          toast.success(res?.message || "Banner Uploaded sucessfully")
         } else {
           props.loader(false);
-
-          props.toaster({ type: "error", message: res?.data?.message });
+          toast.error(res?.data?.message || "Banner Upload failed")
         }
       },
       (err) => {
         props.loader(false);
         console.log(err);
-        props.toaster({ type: "error", message: err?.data?.message });
-        props.toaster({ type: "error", message: err?.message });
+        toast.error(err?.data?.message || "Banner Upload failed")
       }
     );
   };
 
   const getsetting = async () => {
     props.loader(true);
-    Api("get", "getsetting", "", router).then(
+    Api("get", "user/getsetting", "", router).then(
       (res) => {
         props.loader(false);
 

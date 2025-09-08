@@ -49,8 +49,8 @@ function SaleProduct(props) {
       title: "Delete Sale?",
       text: "You want to remove this product from sale?",
       showCancelButton: true,
-      confirmButtonColor: "#127300",
-      cancelButtonColor: "#d33",
+      confirmButtonColor: "#FF700099",
+      cancelButtonColor: "#FF700099",
       confirmButtonText: "Yes, delete it!",
       customClass: {
         confirmButton: "px-12 rounded-xl",
@@ -64,14 +64,11 @@ function SaleProduct(props) {
       if (result.isConfirmed) {
         props.loader(true);
 
-        Api("delete", `sale/deleteFlashSale/${saleId}`, {}, router).then(
+        Api("delete", `sale/deleteFlashSale/${saleId}?SellerId=${user._id}`, {}, router).then(
           (res) => {
             props.loader(false);
             if (res.status) {
-              props.toaster({
-                type: "success",
-                message: "Sale deleted successfully",
-              });
+              toast.success("Sale deleted Sucessfully")
               getSales();
             }
           },
@@ -117,8 +114,8 @@ function SaleProduct(props) {
       text: "This will delete all flash sales. This action cannot be undone!",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonColor: "#dc2626",
-      cancelButtonColor: "#6b7280",
+      confirmButtonColor: "#FF700099",
+      cancelButtonColor: "#FF700099",
       confirmButtonText: "Yes, delete all!",
       customClass: {
         confirmButton: "px-12 rounded-xl",
@@ -132,7 +129,7 @@ function SaleProduct(props) {
       if (result.isConfirmed) {
         props.loader(true);
 
-        Api("delete", "sale/deleteAllFlashSales", {}, router).then(
+        Api("delete", `sale/deleteAllFlashSales?SellerId=${user._id}`, {}, router).then(
           (res) => {
             props.loader(false);
             if (res.status) {
@@ -231,7 +228,7 @@ function SaleProduct(props) {
   };
 
   return (
-    <div className="w-full h-full bg-transparent md:pt-5 pt-5 px-4 overflow-y-scroll   scrollbar-hide overflow-scroll pb-28">
+    <div className="w-full h-full bg-gray-100 md:pt-5 pt-5 px-6 overflow-y-scroll   scrollbar-hide overflow-scroll pb-28">
       <div className="md:pt-[0px] pt-[0px] h-full">
 
         <div className="flex md:flex-row flex-col justify-between items-start mb-6 gap-4">

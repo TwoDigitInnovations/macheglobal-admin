@@ -50,21 +50,11 @@ function Home(props) {
   const router = useRouter();
   const [user, setUser] = useContext(userContext);
   const [AllData, setAllData] = useState({});
-  const [productList, setProductList] = useState([]);
-  const [lowStock, setLowStock] = useState([]);
-  const [timeRange, setTimeRange] = useState("monthly");
   const [salesData, setSalesData] = useState([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
 
-  const [topSellingProducts, setTopSellingProducts] = useState([
-    {
-      name: "",
-      sold: "",
-      remaining: "",
-    },
-  ]);
 
   useEffect(() => {
     dashboarddetails();
@@ -130,9 +120,7 @@ function Home(props) {
             icon={<ChartLine size={45} />}
             accentColor="#44DD22E3"
             message="+12% from last month"
-            color="linear-gradient(0deg, #FF7000, #FF7000),
-linear-gradient(200.56deg, rgba(255, 255, 255, 0.4) 2.27%, rgba(255, 112, 0, 0.48) 36.15%);
-"
+
 
           />
           <ModernStatsCard
@@ -141,9 +129,7 @@ linear-gradient(200.56deg, rgba(255, 255, 255, 0.4) 2.27%, rgba(255, 112, 0, 0.4
             icon={<ArchiveRestore size={45} />}
             accentColor="#44DD22E3"
             message="5 need shipping today"
-            color="linear-gradient(0deg, rgba(0, 153, 255, 0.8), rgba(0, 153, 255, 0.8)),
-linear-gradient(201.29deg, rgba(255, 255, 255, 0.48) 9.55%, rgba(0, 153, 255, 0.64) 42.34%);
-"
+
 
           />
           <ModernStatsCard
@@ -152,9 +138,7 @@ linear-gradient(201.29deg, rgba(255, 255, 255, 0.48) 9.55%, rgba(0, 153, 255, 0.
             icon={<Warehouse size={45} />}
             accentColor="#E84F4F"
             message="5 low-stock alerts"
-            color="linear-gradient(0deg, #FF7000, #FF7000),
-linear-gradient(200.56deg, rgba(255, 255, 255, 0.4) 2.27%, rgba(255, 112, 0, 0.48) 36.15%);
-"
+
 
           />
           <ModernStatsCard
@@ -163,9 +147,7 @@ linear-gradient(200.56deg, rgba(255, 255, 255, 0.4) 2.27%, rgba(255, 112, 0, 0.4
             icon={<BanknoteArrowDown size={45} />}
             accentColor="#44DD22E3"
             message="Next payout: 5th Sept, 2025"
-            color="linear-gradient(0deg, rgba(0, 153, 255, 0.8), rgba(0, 153, 255, 0.8)),
-linear-gradient(201.29deg, rgba(255, 255, 255, 0.48) 9.55%, rgba(0, 153, 255, 0.64) 42.34%);
-"
+
           />
           <ModernStatsCard
             title="Refund Requests"
@@ -173,9 +155,7 @@ linear-gradient(201.29deg, rgba(255, 255, 255, 0.48) 9.55%, rgba(0, 153, 255, 0.
             icon={<HandCoins size={45} />}
             accentColor="#E84F4F"
             message="2 pending review"
-            color="linear-gradient(0deg, #FF7000, #FF7000),
-linear-gradient(200.56deg, rgba(255, 255, 255, 0.4) 2.27%, rgba(255, 112, 0, 0.48) 36.15%);
-"
+
           />
           <ModernStatsCard
             title="Payouts Completed"
@@ -183,9 +163,7 @@ linear-gradient(200.56deg, rgba(255, 255, 255, 0.4) 2.27%, rgba(255, 112, 0, 0.4
             icon={<BanknoteArrowDown size={45} />}
             accentColor="#0099FFCC"
             message="Last payout: 25th Aug, 2025"
-            color="linear-gradient(0deg, rgba(0, 153, 255, 0.8), rgba(0, 153, 255, 0.8)),
-linear-gradient(201.29deg, rgba(255, 255, 255, 0.48) 9.55%, rgba(0, 153, 255, 0.64) 42.34%);
-"
+
           />
 
         </div>
@@ -310,8 +288,8 @@ const ModernStatsCard = ({ title, value, icon, gradient, accentColor, color, mes
 
           </div>
           <div
-            className="p-1 rounded-[6px] text-black shadow-lg transform group-hover:scale-110 transition-transform duration-300"
-            style={{ background: color }}
+            className="p-1 rounded-[6px] text-black shadow-lg transform group-hover:scale-110 transition-transform duration-300 bg-[#FF700099]"
+
           >
             {icon}
           </div>

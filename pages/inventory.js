@@ -242,7 +242,7 @@ function Inventory(props) {
   };
 
   return (
-    <div className="bg-gray-100 w-full h-full  md:pt-5 pt-5 pb-5 pl-5 pr-5">
+    <div className="bg-gray-100 w-full h-full py-5 px-5">
       <div className="md:pt-[0px] pt-[0px] h-full">
         <p className="text-black font-bold md:text-[32px] text-2xl">
           <span className="w-2 h-8 bg-[#F38529] rounded "></span>

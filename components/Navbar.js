@@ -1,12 +1,12 @@
 import { userContext } from "@/pages/_app";
-import { Bell } from "lucide-react";
+import { Bell, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useContext, useState } from "react";
 import { GiHamburgerMenu } from "react-icons/gi";
 import { PiCalendarSlash, PiSignOutFill } from "react-icons/pi";
-
 import Swal from "sweetalert2";
+
 const Navbar = ({ setOpenTab, openTab }) => {
   const [user, setUser] = useContext(userContext);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -65,49 +65,57 @@ const Navbar = ({ setOpenTab, openTab }) => {
           </div>
 
 
-          {/* {user?.token && ( */}
-            <div className="hidden md:flex items-center justify-end space-x-4 flex-1">
-              <div className="relative">
-                <button
-                  className="flex items-center space-x-3 bg-white hover:bg-gray-50 px-4 py-2 rounded-lg transition-colors duration-200"
+          {user?._id && (
+          <div className="hidden md:flex items-center justify-end space-x-4 flex-1">
+            <div className="relative">
+              <button
+                className="flex items-center space-x-3 bg-white hover:bg-gray-50 px-4 py-2 rounded-lg transition-colors duration-200"
+              >
+                <div>
+                  <input
+                    className="w-[20rem] bg-white border-black border text-black rounded-3xl px-4 py-2"
+                    placeholder="Search"
+                  />
+                </div>
+                <p className="p-2 bg-custom-lightgold rounded-full"><Bell className="text-black" /> </p>
+                <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-black flex-shrink-0"
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
                 >
-                  <div>
-                    <input
-                      className="w-[20rem] bg-white border-black border text-black rounded-3xl px-4 py-2"
-                      placeholder="Search"
-                    />
-                  </div>
-                  <p className="p-2 bg-custom-lightgold rounded-full"><Bell className="text-black"/> </p>
-                  <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-black flex-shrink-0"
-                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  >
-                    <img
-                      src={"/office-man.png"}
-                      alt="User"
-                      className="w-full h-full object-cover"
-                      onError={imageOnError}
-                    />
-                  </div>
-                  <div className="flex flex-col text-left">
-                    <p className="text-gray-500 text-xs">{user?.role}</p>
-                  </div>
-                 
-                </button>
+                  <img
+                    src={"/office-man.png"}
+                    alt="User"
+                    className="w-full h-full object-cover"
+                    onError={imageOnError}
+                  />
+                </div>
+                <div className="flex flex-col text-left">
+                  <p className="text-gray-500 text-xs">{user?.role}</p>
+                </div>
 
-                {dropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-10 border border-gray-100">
-                    <button
-                      onClick={handleLogout}
-                      className="flex items-center space-x-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      <PiSignOutFill size={16} className="text-black" />
-                      <span>Sign Out</span>
-                    </button>
-                  </div>
-                )}
-              </div>  
+              </button>
+
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-10 border border-gray-100">
+                  <button
+                    onClick={() => router.push("/myProfile")}
+                    className="flex items-center space-x-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <User size={16} className="text-black" />
+                    <span>My Profile</span>
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center space-x-2 w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <PiSignOutFill size={16} className="text-black" />
+                    <span>Sign Out</span>
+                  </button>
+
+                </div>
+              )}
             </div>
-          {/* )} */}
+          </div>
+          )}
 
           {/* Mobile menu button */}
           <div className="md:hidden">
@@ -124,12 +132,12 @@ const Navbar = ({ setOpenTab, openTab }) => {
       {/* Mobile Navigation */}
       {openTab && (
         <div className="md:hidden bg-white border-t border-gray-100 py-2 px-4 shadow-lg">
-          {user?.token ? (
+          {user._id ? (
             <div className="flex flex-col space-y-3">
               <div className="flex items-center space-x-3 p-2">
                 <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#127300]">
                   <img
-                    src={user?.profile || "/userprofile.png"}
+                    src={"/userprofile.png"}
                     alt="User"
                     className="w-full h-full object-cover"
                     onError={imageOnError}

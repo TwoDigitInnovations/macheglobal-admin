@@ -55,7 +55,7 @@ function ContentManagement(props) {
             id: data._id || ''
           });
         } else {
-           toast.error(err?.data?.message);
+           toast.error(res?.data?.message);
         }
       },
       (err) => {
