@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const ConstantsUrl = "http://localhost:3003/";
+// const ConstantsUrl = "http://localhost:3003/";
+const ConstantsUrl = "https://api.macheglobal.com/"
 
 
 function handleAuthError(err, router) {
