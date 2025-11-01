@@ -40,8 +40,9 @@ function SellerOrders(props) {
         currentPage: 1,
         itemsPerPage: 10,
     });
-
-    const primaryColor = '#FF700099'; // The specified orange color code
+    
+    // Define primary color for consistent styling
+    const primaryColor = '#FF7000'; // Orange color used in the UI
 
     useEffect(() => {
         fetchOrders(selectedDate, currentPage);
@@ -58,28 +59,74 @@ function SellerOrders(props) {
         props.loader(true);
 
         try {
+            
             const res = await Api("post", `product/getOrderBySeller?page=${page}&limit=${limit}`, data, router);
-
+            console.log("Raw API Response:", res);
+            
             props.loader(false);
             setIsLoading(false);
 
             if (res?.status) {
-                setOrders(res?.data);
-                setPagination(res?.pagination);
-                setCurrentPage(res?.pagination?.currentPage);
+             
+                
+                // Transform the data to include required fields
+                const transformedData = res.data.map((order, index) => {
+                    const transformedOrder = {
+                        ...order,
+                        // Ensure status has a default value if not present
+                        status: order.status || 'pending',
+                        // Ensure user object has required fields
+                        user: {
+                            name: order.user?.name || 'N/A',
+                            email: order.user?.email || 'N/A',
+                            phone: order.user?.phone || 'N/A',
+                            ...order.user
+                        },
+                        // Get seller info from multiple possible locations
+                        sellerInfo: order.sellerInfo || 
+                                  (order.orderItems?.[0]?.sellerInfo) || 
+                                  { name: 'N/A' },
+                        // Format the date for display
+                        formattedDate: moment(order.createdAt).format('DD MMM YYYY')
+                    };
+                    
+                    console.log(`Order ${index + 1}:`, {
+                        orderId: order.orderId,
+                        sellerInfo: transformedOrder.sellerInfo,
+                        orderItems: order.orderItems?.map(item => ({
+                            product: item.product?.name || 'N/A',
+                            seller: item.seller,
+                            sellerInfo: item.sellerInfo
+                        }))
+                    });
+                    
+                    return transformedOrder;
+                });
+                
+                setOrders(transformedData);
+                setPagination({
+                    totalPages: res.pagination?.totalPages || 1,
+                    currentPage: res.pagination?.currentPage || page,
+                    itemsPerPage: res.pagination?.itemsPerPage || limit,
+                    totalItems: res.pagination?.totalItems || res.data.length
+                });
+                setCurrentPage(res.pagination?.currentPage || page);
             } else {
-                toast.error(res?.data?.message || "Failed to fetch orders")
+                console.error('Error in API response:', res);
+                toast.error(res?.data?.message || "Failed to fetch orders");
             }
         } catch (err) {
+            console.error("Error fetching orders:", err);
             props.loader(false);
             setIsLoading(false);
-            toast.error(err?.data?.message || err?.message || "An error occurred")
+            toast.error(err?.data?.message || err?.message || "An error occurred while fetching orders");
         }
     };
 
     const handleSearch = () => {
         fetchOrders(selectedDate, 1);
     };
+
 
     const handleReset = () => {
         setSelectedDate('');
@@ -141,26 +188,44 @@ function SellerOrders(props) {
 
     const renderStatus = ({ value }) => {
         let colorClass = '';
+        let displayText = value || 'pending';
 
-        switch (value) {
+        // Map status to display text and color
+        switch ((value || '').toLowerCase()) {
             case 'pending':
-                colorClass = 'text-yellow-500';
+                colorClass = 'bg-yellow-100 text-yellow-800';
+                displayText = 'Pending';
                 break;
-            case 'resolved':
-                colorClass = 'text-green-600';
+            case 'processing':
+                colorClass = 'bg-blue-100 text-blue-800';
+                displayText = 'Processing';
                 break;
-            case 'closed':
-                colorClass = 'text-red-600';
+            case 'shipped':
+                colorClass = 'bg-indigo-100 text-indigo-800';
+                displayText = 'Shipped';
+                break;
+            case 'delivered':
+                colorClass = 'bg-green-100 text-green-800';
+                displayText = 'Delivered';
+                break;
+            case 'cancelled':
+                colorClass = 'bg-red-100 text-red-800';
+                displayText = 'Cancelled';
+                break;
+            case 'completed':
+                colorClass = 'bg-green-100 text-green-800';
+                displayText = 'Completed';
                 break;
             default:
-                colorClass = 'text-gray-600';
+                colorClass = 'bg-gray-100 text-gray-800';
+                displayText = value || 'Pending';
         }
 
         return (
             <div className="flex items-center justify-center">
-                <p className={`text-[16px] font-semibold capitalize ${colorClass}`}>
-                    {value}
-                </p>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${colorClass}`}>
+                    {displayText}
+                </span>
             </div>
         );
     };
@@ -186,19 +251,55 @@ function SellerOrders(props) {
         () => [
             {
                 Header: "ORDER ID",
-                Cell: indexID,
-                width: 60
+                accessor: 'orderId',
+                Cell: ({ value }) => (
+                    <div className="flex justify-center">
+                        <p className="text-gray-800 font-medium">{value || 'N/A'}</p>
+                    </div>
+                ),
+                width: 120
             },
             {
                 Header: "CUSTOMER NAME",
-                accessor: 'name',
-                Cell: renderName,
-
+                accessor: 'user.name',
+                Cell: ({ value, row }) => (
+                    <div className="flex justify-center">
+                        <p className="text-gray-800 font-medium">{value || row.original?.user?.name || 'N/A'}</p>
+                    </div>
+                ),
             },
             {
                 Header: "SELLER NAME",
-                accessor: 'sellerName',
-                Cell: renderEmail
+                id: 'sellerName',
+                Cell: ({ row }) => {
+                    // Get the first order item with seller info
+                    const firstItem = row.original.orderItems?.[0];
+                    
+                    // Try to get seller name from multiple possible locations
+                    const sellerName = row.original.sellerInfo?.name || 
+                                    firstItem?.sellerInfo?.name ||
+                                    firstItem?.product?.SellerId?.name ||
+                                    'N/A';
+                    
+                    console.log('Seller name for order', row.original.orderId, ':', {
+                        orderId: row.original.orderId,
+                        sellerName: sellerName,
+                        sellerInfo: row.original.sellerInfo,
+                        firstItem: firstItem ? {
+                            seller: firstItem.seller,
+                            sellerInfo: firstItem.sellerInfo,
+                            productSeller: firstItem.product?.SellerId
+                        } : 'No items'
+                    });
+                    
+                    return (
+                        <div className="flex justify-center">
+                            <p className="text-gray-800 font-medium">
+                                {sellerName}
+                            </p>
+                        </div>
+                    );
+                }
             },
             {
                 Header: "ORDER DATE",
@@ -343,134 +444,189 @@ function SellerOrders(props) {
                             )}
 
                             <div className="px-5 pt-4">
-                                <h3 className="text-gray-800 font-medium mb-3">Order Items</h3>
-                                {popupData?.productDetail?.map((item, i) => (
-                                    <div
-                                        key={i}
-                                        className="border-b border-gray-100 py-4 cursor-pointer hover:bg-gray-50 transition-colors rounded-lg"
-                                        onClick={() => {
-                                            router.push(
-                                                `/orders-details/${popupData?._id}?product_id=${item?._id}`
-                                            );
-                                        }}
-                                    >
-                                        <div className="flex items-center justify-center p-1 bg-white shadow-md rounded-lg">
-                                            <div className=" bg-gray-50 rounded-lg ">
-                                                <img
-                                                    className="w-[80px] h-[140px] object-contain"
-                                                    src={item?.image[0]}
-                                                    alt={item?.product?.name}
-                                                />
-                                            </div>
-
-                                            <div className="ml-4 flex-grow">
-                                                <p className="text-gray-800 font-semibold text-[16px]">
-                                                    {item?.product?.name}
-                                                </p>
-                                                <div className="flex flex-wrap ">
-                                                    <div className="flex flex-col items-start mt-1">
-                                                        <div className="flex mt-1">
-                                                            <span className="text-gray-700 text-sm mr-1 font-medium">
-                                                                Qty:
-                                                            </span>
-                                                            <span className="text-gray-700 text-sm">
-                                                                {item?.qty}
-                                                            </span>
+                                {popupData?.orderItems?.map((item, i) => {
+                                    const product = item.product || {};
+                                    // Handle different possible image formats
+                                    let imageUrl = '';
+                                    if (item.image) {
+                                        // If image is directly on the order item
+                                        imageUrl = item.image;
+                                    } else if (product.image) {
+                                        // If image is on the product object
+                                        imageUrl = Array.isArray(product.image) 
+                                            ? product.image[0] 
+                                            : product.image;
+                                    }
+                                    
+                                    return (
+                                        <div key={i} className="flex items-center justify-between py-4 border-b border-gray-200">
+                                            <div className="flex items-center">
+                                                <div className="w-16 h-16 bg-gray-100 rounded overflow-hidden flex-shrink-0 flex items-center justify-center">
+                                                    {imageUrl ? (
+                                                        <img
+                                                            className="w-full h-full object-cover"
+                                                            src={imageUrl}
+                                                            alt={product.name || 'Product'}
+                                                            onError={(e) => {
+                                                                e.target.onerror = null;
+                                                                e.target.src = '/placeholder-product.png';
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                                                            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                            </svg>
                                                         </div>
-
-                                                        {item?.color && (
-                                                            <div className="flex mt-1">
-                                                                <span className="text-gray-700 text-sm mr-1 font-medium">
-                                                                    Color:
-                                                                </span>
-                                                                <span className="text-gray-700 text-sm">
-                                                                    {item?.color || "N/A"}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                        {item?.attribute && (
-                                                            Object.entries(item.attribute)
-                                                                .filter(([key]) => key.toLowerCase() !== "color")
-                                                                .map(([label, value], index) => (
-                                                                    <div key={index} className="text-gray-700 text-sm mb-1 font-medium">
-                                                                        {label}: <span className="text-gray-700 text-sm">{value || "Not found"}</span>
-                                                                    </div>
-                                                                ))
-                                                        )}
-                                                    </div>
+                                                    )}
+                                                </div>
+                                                <div className="ml-4">
+                                                    <p className="text-gray-900 font-medium">{product.name || 'Product Name N/A'}</p>
+                                                    <p className="text-gray-500 text-sm">Qty: {item.qty || 1}</p>
+                                                    <p className="text-gray-500 text-sm">${item.price || '0.00'} x {item.qty || 1}</p>
                                                 </div>
                                             </div>
-
-                                            <div className="ml-auto">
-                                                <p className="text-[#127300] font-semibold text-lg">
-                                                    ${item?.price}
-                                                </p>
+                                            <div className="text-right">
+                                                <p className="text-gray-900 font-medium">${(item.price * (item.qty || 1)).toFixed(2)}</p>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
 
-                            {/* Delivery Information */}
+                            {/* Order Summary */}
                             <div className="px-5 pt-6">
-                                {/* Order Status */}
-                                {popupData?.status === "Completed" && (
-                                    <div className="bg-green-50 border-l-4 border-green-500 p-4 mb-4">
-                                        <div className="flex">
-                                            <div className="flex-shrink-0">
-                                                <svg
-                                                    className="h-5 w-5 text-green-500"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
-                                                >
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                                        clipRule="evenodd"
-                                                    />
-                                                </svg>
-                                            </div>
-                                            <div className="ml-3">
-                                                <p className="text-sm text-green-700 font-medium">
-                                                    Order has been delivered successfully
-                                                </p>
-                                            </div>
+                                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div>
+                                            <p className="text-gray-500 text-sm">Order ID</p>
+                                            <p className="font-medium">{popupData?.orderId || 'N/A'}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-gray-500 text-sm">Date</p>
+                                            <p className="font-medium">
+                                                {popupData?.createdAt ? new Date(popupData.createdAt).toLocaleDateString('en-US', {
+                                                    year: 'numeric',
+                                                    month: 'short',
+                                                    day: 'numeric'
+                                                }) : 'N/A'}
+                                            </p>
                                         </div>
                                     </div>
-                                )}
 
-                                {popupData?.status === "Return" && (
-                                    <div className="bg-green-50 border-l-4 border-green-500 p-4 mb-4">
-                                        <div className="flex">
-                                            <div className="flex-shrink-0">
-                                                <svg
-                                                    className="h-5 w-5 text-green-500"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
-                                                >
-                                                    <path
-                                                        fillRule="evenodd"
-                                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                                        clipRule="evenodd"
-                                                    />
-                                                </svg>
+                                    <div className="border-t border-gray-200 pt-4">
+                                        <div className="flex justify-between mb-2">
+                                            <span className="text-gray-600">Subtotal</span>
+                                            <span className="font-medium">${popupData?.itemsPrice?.toFixed(2) || '0.00'}</span>
+                                        </div>
+                                        {popupData?.shippingPrice > 0 && (
+                                            <div className="flex justify-between mb-2">
+                                                <span className="text-gray-600">Shipping</span>
+                                                <span className="font-medium">${popupData.shippingPrice.toFixed(2)}</span>
                                             </div>
-                                            <div className="ml-3">
-                                                <p className="text-sm text-green-700 font-medium">
-                                                    Order has been Return successfully
-                                                </p>
+                                        )}
+                                        {popupData?.taxPrice > 0 && (
+                                            <div className="flex justify-between mb-2">
+                                                <span className="text-gray-600">Tax</span>
+                                                <span className="font-medium">${popupData.taxPrice.toFixed(2)}</span>
                                             </div>
+                                        )}
+                                        <div className="border-t border-gray-200 my-3"></div>
+                                        <div className="flex justify-between text-lg font-semibold">
+                                            <span>Total</span>
+                                            <span>${popupData?.totalPrice?.toFixed(2) || '0.00'}</span>
                                         </div>
                                     </div>
-                                )}
+                                </div>
+
+                                {/* Status Badge */}
+                                <div className="flex items-center justify-between bg-gray-50 p-4 rounded-lg mb-4">
+                                    <div className="flex items-center">
+                                        <div className={`w-3 h-3 rounded-full mr-2 ${
+                                            popupData?.status === 'delivered' || popupData?.status === 'completed' 
+                                                ? 'bg-green-500' 
+                                                : popupData?.status === 'cancelled' 
+                                                    ? 'bg-red-500' 
+                                                    : 'bg-blue-500'
+                                        }`}></div>
+                                        <span className="font-medium text-gray-700">
+                                            {popupData?.status === 'delivered' 
+                                                ? 'Delivered' 
+                                                : popupData?.status === 'completed'
+                                                    ? 'Completed'
+                                                    : popupData?.status === 'cancelled'
+                                                        ? 'Cancelled'
+                                                        : popupData?.status || 'Processing'}
+                                        </span>
+                                    </div>
+                                    <span className="text-sm text-gray-500">
+                                        {popupData?.createdAt ? new Date(popupData.createdAt).toLocaleTimeString() : ''}
+                                    </span>
+                                </div>
+
+                                {/* Customer Information */}
+                                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+                                    <h4 className="font-medium text-gray-800 mb-3">Customer Information</h4>
+                                    {popupData?.shippingAddress && (
+                                        <div className="space-y-2 text-sm">
+                                            <div className="flex items-center">
+                                                <User size={16} className="text-gray-500 mr-2" />
+                                                <span>{popupData.shippingAddress.name || 'N/A'}</span>
+                                            </div>
+                                            <div className="flex items-center">
+                                                <Phone size={16} className="text-gray-500 mr-2" />
+                                                <span>{popupData.shippingAddress.phone || 'N/A'}</span>
+                                            </div>
+                                            <div className="flex items-start">
+                                                <svg className="w-4 h-4 text-gray-500 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                </svg>
+                                                <span>
+                                                    {[
+                                                        popupData.shippingAddress.address,
+                                                        popupData.shippingAddress.city,
+                                                        popupData.shippingAddress.postalCode,
+                                                        popupData.shippingAddress.country
+                                                    ].filter(Boolean).join(', ')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
-                        {/* Total Section - Fixed at Bottom */}
-                        <div className="fixed bottom-0  right-0 bg-white px-2 py-2 border-t border-gray-200 md:w-[43vw] w-[380px]">
-                            <button className="bg-[#127300] w-full py-4 rounded-lg text-white text-lg font-bold flex justify-center items-center">
-                                Total: ${popupData?.total}
-                            </button>
+                        {/* Action Buttons - Fixed at Bottom */}
+                        <div className="fixed bottom-0 right-0 bg-white px-4 py-3 border-t border-gray-200 md:w-[43vw] w-[380px] shadow-md">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <p className="text-sm text-gray-500">Total Amount</p>
+                                    <p className="text-lg font-bold">${popupData?.totalPrice?.toFixed(2) || '0.00'}</p>
+                                </div>
+                                <div className="flex space-x-3">
+                                    <button 
+                                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                                        onClick={() => setViewPopup(false)}
+                                    >
+                                        Close
+                                    </button>
+                                    {popupData?.status !== 'cancelled' && popupData?.status !== 'delivered' && (
+                                        <button 
+                                            className="px-4 py-2 bg-[#FF700099] text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                                            onClick={() => {
+                                                const newStatus = prompt('Update status to (processing/shipped/delivered/cancelled):');
+                                                if (newStatus) {
+                                                    updateStatusAPI(popupData._id, newStatus);
+                                                    setViewPopup(false);
+                                                }
+                                            }}
+                                        >
+                                            Update Status
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </Drawer>

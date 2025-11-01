@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Search,
   Calendar,
@@ -18,58 +18,63 @@ import { useRouter } from "next/router";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 
-
-function Queries(props) {
-  const [queries, setQueries] = useState([]);
+function ReviewPage(props) {
   const [viewPopup, setViewPopup] = useState(false);
   const [popupData, setPopupData] = useState({});
   const [selectedDate, setSelectedDate] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [sampleReviews, setSampleReviews] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const router = useRouter();
 
   const [pagination, setPagination] = useState({
     totalPages: 1,
     currentPage: 1,
     itemsPerPage: 10,
+    totalItems: 0
   });
 
   const primaryColor = "#FF700099";
 
-  const getAllQuries = async (page = 1, limit = 10) => {
-    const data = {
-      selectedDate: selectedDate,
-    };
+  const fetchReviews = async (page = 1, limit = 10) => {
+    try {
+      setIsLoading(true);
+      const response = await Api(
+        "get", 
+        `reviews?page=${page}&limit=${limit}${selectedDate ? `&date=${selectedDate}` : ''}${searchQuery ? `&search=${searchQuery}` : ''}`, 
+        {}, 
+        router
+      );
 
-    props.loader(true);
-    Api("post", `getReview`, data, router).then(
-      (res) => {
-        props.loader(false);
-        console.log(res);
-        setSampleReviews(res.data);
-        // setPagination({
-        //   totalPages: 1,
-        //   currentPage: 1,
-        //   itemsPerPage: 10,
-        // });
-        if (res?.status) {
-        } else {
-          console.log(res?.data?.message);
-          toast.error(res?.data?.message || "An error occurred")
-        }
-      },
-      (err) => {
-        props.loader(false);
-        console.log(err);
-        toast.error(err?.data?.message || err?.message)
+      console.log('Fetch reviews response:', response);
+      
+      if (response && response.data) {
+        
+        const reviewsData = Array.isArray(response.data) ? response.data : [];
+        
+        console.log('Setting reviews:', reviewsData);
+        setReviews(reviewsData);
+        
+        setPagination({
+          totalPages: response.data.totalPages || 1,
+          currentPage: page,
+          itemsPerPage: limit,
+          totalItems: response.data.totalItems || reviewsData.length
+        });
       }
-    );
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+      toast.error(error?.response?.data?.message || 'Failed to fetch reviews');
+    } finally {
+      setIsLoading(false);
+      if (props.loader) props.loader(false);
+    }
   };
 
   useEffect(() => {
-    getAllQuries();
-  }, []);
+    fetchReviews(currentPage, pagination.itemsPerPage);
+  }, [currentPage, selectedDate, searchQuery]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -112,108 +117,126 @@ function Queries(props) {
   };
 
   const handleSearch = () => {
-    getAllQuries();
+    setCurrentPage(1);
+    fetchReviews(1, pagination.itemsPerPage);
   };
 
   const handleReset = () => {
     setSelectedDate("");
-    getAllQuries();
+    setSearchQuery("");
+    setCurrentPage(1);
+    fetchReviews(1, pagination.itemsPerPage);
   };
 
-  const ReviewCard = ({ review }) => (
-    <div className="w-full h-auto bg-white border border-gray-200 rounded-lg md:p-4 p-3 shadow-sm hover:shadow-md transition-shadow duration-200">
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-            <User size={20} className="text-gray-600" />
-          </div>
-          <div>
-            <div className="text-sm text-gray-500 flex items-center">
-              <Clock size={14} className="mr-1" />
-              {formatDate(review.updatedAt)}
+  const ReviewCard = ({ review }) => {
+    // Debug: Log the review data
+    console.log('Rendering review:', review);
+    
+    // Ensure review data exists before rendering
+    if (!review) {
+      console.log('No review data provided');
+      return null;
+    }
+    
+    // Format the date
+    const formattedDate = formatDate(review.createdAt);
+    
+    return (
+      <div className="w-full h-auto bg-white border border-gray-200 rounded-lg md:p-4 p-3 shadow-sm hover:shadow-md transition-shadow duration-200 mb-4">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+              <User size={20} className="text-gray-600" />
+            </div>
+            <div>
+              <h3 className="font-medium text-gray-900">{review.posted_by?.name || 'Anonymous'}</h3>
+              <div className="flex items-center text-sm text-gray-500">
+                <Clock size={14} className="mr-1" />
+                {formatDate(review.createdAt)}
+              </div>
             </div>
           </div>
+          <div className="flex items-center space-x-2">
+            <Package size={16} className="text-gray-400" />
+            <span className="text-sm text-gray-500">
+              {review.product?.name || 'Product not available'}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <Package size={16} className="text-gray-400 md:block hidden" />
-          <span className="md:block hidden text-xs text-gray-500">
-            Product Name: {review.product?.name}
-          </span>
-        </div>
-      </div>
 
-
-      <div className="mb-3">{renderStars(review.rating)}</div>
-      <div className="mb-4">
-        <p className="text-gray-700 text-sm leading-relaxed line-clamp-3">
-          {review.description}
-        </p>
-      </div>
-
-      <div className="flex md:flex-row flex-col justify-between items-start gap-2 pt-3 border-t border-gray-100">
-        <div className="md:block hidden text-xs text-gray-500">
-          Posted by: {review.posted_by.name}
+        <div className="mb-3">
+          {renderStars(review.rating)}
         </div>
-        <div className="block md:hidden text-xs text-gray-500">
-          Posted by: {review.posted_by.name}
-        </div>
-        <div className="flex gap-2 w-full md:w-[300px]">
+
+        {review.description && (
+          <div className="mb-4">
+            <p className="text-gray-700 text-sm leading-relaxed">
+              {review.description}
+            </p>
+          </div>
+        )}
+
+        {review.images?.length > 0 && (
+          <div className="flex space-x-2 mb-4 overflow-x-auto pb-2">
+            {review.images.map((image, index) => (
+              <img
+                key={index}
+                src={image}
+                alt={`Review ${index + 1}`}
+                className="h-20 w-20 object-cover rounded"
+              />
+            ))}
+          </div>
+        )}
+
+        <div className="flex justify-end space-x-2 pt-2 border-t border-gray-100">
           <button
             onClick={() => handleViewDetails(review)}
-            className="flex w-1/2  items-center space-x-2 px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 hover:opacity-90"
+            className="px-4 py-2 text-sm font-medium text-white bg-primary-500 rounded-lg hover:bg-primary-600 transition-colors"
             style={{ backgroundColor: primaryColor }}
           >
-            <Eye size={16} />
-            <span>View Details</span>
+            View Details
           </button>
           <button
-            onClick={() => deleteProduct(review._id)}
-            className="flex w-1/2  items-center justify-center space-x-2 px-4 py-2.5 text-sm font-medium text-white bg-red-500 rounded-lg transition-all duration-200 hover:bg-red-600 hover:shadow-md transform hover:scale-103 "
+            onClick={() => deleteReview(review._id)}
+            className="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
           >
-            <Delete size={16} />
-            <span>Delete</span>
+            Delete
           </button>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
-  const deleteProduct = (_id) => {
-    Swal.fire({
-      title: "",
-      text: "Are you sure? You want to delete this Review?",
-      showCancelButton: true,
-      cancelButtonColor: "#F38529",
-      confirmButtonColor: "#F38529",
-      confirmButtonText: "Delete",
-      width: "350px",
-    }).then(function (result) {
+  const deleteReview = async (reviewId) => {
+    try {
+      const result = await Swal.fire({
+        title: "Delete Review",
+        text: "Are you sure you want to delete this review?",
+        showCancelButton: true,
+        cancelButtonColor: "#F38529",
+        confirmButtonColor: "#F38529",
+        confirmText: "Delete",
+        width: "350px",
+      });
+
       if (result.isConfirmed) {
-        const data = {
-          _id,
-        };
         props.loader(true);
-        Api("delete", `deleteReview/${_id}`, data, router).then(
-          (res) => {
-            console.log("res================>", res.data?.meaasge);
-            props.loader(false);
-            toast.success("Review deleted successfully")
-            if (res?.status) {
-              getAllQuries();
-            } else {
-              console.log(res?.data?.message);
-              toast.error(res?.data?.meaasge)
-            }
-          },
-          (err) => {
-            props.loader(false);
-            console.log(err);
-            toast.error(err?.data?.meaasge || err?.message)
-          }
-        );
-      } else if (result.isDenied) {
+        const response = await Api("delete", `reviews/${reviewId}`, {}, router);
+        
+        if (response?.status) {
+          toast.success("Review deleted successfully");
+          fetchReviews(currentPage, pagination.itemsPerPage);
+        } else {
+          throw new Error(response?.data?.message || 'Failed to delete review');
+        }
       }
-    });
+    } catch (error) {
+      console.error('Error deleting review:', error);
+      toast.error(error.message || 'Failed to delete review');
+    } finally {
+      props.loader(false);
+    }
   };
 
   return (
@@ -267,7 +290,12 @@ function Queries(props) {
       </div>
 
       {/* Reviews Grid */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 md:p-6 p-4">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <div className="mb-6">
+          <h2 className="text-lg font-medium text-gray-900">Product Reviews</h2>
+          <p className="text-sm text-gray-500">Manage and moderate customer reviews</p>
+        </div>
+        
         {isLoading ? (
           <div className="flex justify-center items-center p-20">
             <div
@@ -275,27 +303,52 @@ function Queries(props) {
               style={{ borderColor: primaryColor }}
             ></div>
           </div>
-        ) :
-          sampleReviews.length == 0 ? (
-            <div className="flex flex-col justify-center items-center p-20 text-center">
-              <div className="w-32 h-32 mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                <Package size={48} className="text-[#FF700099]" />
-              </div>
-              <h3 className="text-xl font-medium text-gray-700 mb-1">
-                No reviews found
-              </h3>
-              <p className="text-gray-500">
-                Try adjusting your filters or search terms
-              </p>
+        ) : reviews.length === 0 ? (
+          <div className="flex flex-col justify-center items-center p-12 text-center">
+            <div className="w-24 h-24 mb-4 bg-gray-50 rounded-full flex items-center justify-center">
+              <Package size={40} className="text-gray-400" />
             </div>
-          ) :
-            (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 md:gap-6 gap-4">
-                {sampleReviews.map((review) => (
-                  <ReviewCard key={review._id} review={review} />
-                ))}
+            <h3 className="text-lg font-medium text-gray-700 mb-2">
+              No reviews found
+            </h3>
+            <p className="text-gray-500 max-w-md">
+              {searchQuery || selectedDate 
+                ? 'No reviews match your search criteria. Try adjusting your filters.'
+                : 'There are no reviews to display at the moment.'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {reviews.map((review) => (
+              <ReviewCard key={review._id} review={review} />
+            ))}
+            
+            {/* Pagination */}
+            {pagination.totalPages > 1 && (
+              <div className="flex justify-center mt-8">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={pagination.currentPage === 1}
+                    className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <span className="px-4 py-2 text-sm text-gray-600">
+                    Page {pagination.currentPage} of {pagination.totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
+                    disabled={pagination.currentPage === pagination.totalPages}
+                    className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             )}
+          </div>
+        )}
       </div>
 
       {/* View Details Popup */}
@@ -359,10 +412,16 @@ function Queries(props) {
                   <p className="text-sm text-gray-600">
                     SubCategory: {popupData.product?.subCategoryName}
                   </p>
-                  <p className="text-sm text-gray-600">
-                    Price: ${popupData.product?.varients[0]?.selected[0]?.price} (Offer
-                    Price: ${popupData.product?.varients[0]?.selected[0]?.offerprice})
-                  </p>
+                  {popupData.product?.variants?.[0]?.selected?.[0] ? (
+                    <p className="text-sm text-gray-600">
+                      Price: ${popupData.product.variants[0].selected[0].price || 'N/A'}
+                      {popupData.product.variants[0].selected[0].offerprice && (
+                        <span> (Offer Price: ${popupData.product.variants[0].selected[0].offerprice})</span>
+                      )}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-600">Price information not available</p>
+                  )}
                 </div>
 
 
@@ -396,4 +455,4 @@ function Queries(props) {
   );
 }
 
-export default Queries;
+export default ReviewPage;

@@ -1,146 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield, TrendingUp, ArrowUpRight, ArrowDownLeft, Clock, CheckCircle, XCircle, DollarSign, CreditCard, History, Users, ShoppingCart, Percent } from 'lucide-react';
 import { useRouter } from 'next/router';
+import { Api } from '../services/service';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import 'react-toastify/dist/ReactToastify.css';
+
 const AdminWalletDashboard = () => {
     const [activeTab, setActiveTab] = useState('overview');
     const [selectedWithdrawal, setSelectedWithdrawal] = useState(null);
-    const router = useRouter()
+        const [loading, setLoading] = useState(true);
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState('');
+    const [currentWithdrawal, setCurrentWithdrawal] = useState(null);
+    const router = useRouter();
 
-    const adminWalletData = {
-        balance: 485750,
-        totalCommissionEarned: 2456890,
-        totalPayoutsMade: 1971140,
-        pendingWithdrawals: 12,
-        thisMonthCommission: 145680,
-        activeSellers: 248
+    // State for wallet data
+    const [walletData, setWalletData] = useState({
+        balance: 0,
+        totalCommissionEarned: 0,
+        totalPayoutsMade: 0,
+        pendingWithdrawals: 0,
+        thisMonthCommission: 0,
+        activeSellers: 0
+    });
+
+    const [recentTransactions, setRecentTransactions] = useState([]);
+    const [withdrawals, setWithdrawals] = useState([]);
+    const [sellers, setSellers] = useState([]);
+
+    // Format currency
+    const formatCurrency = (amount) => {
+        if (amount === undefined || amount === null) return 'HTG 0';
+        return `HTG ${amount.toLocaleString()}`;
     };
 
-    const recentTransactions = [
-        {
-            id: 1,
-            type: 'credit',
-            amount: 100,
-            description: 'Commission from Order #ORD1234',
-            orderId: 'ORD1234',
-            sellerId: 'SELL001',
-            sellerName: 'Rajesh Electronics',
-            createdAt: '2024-11-15T10:30:00Z'
-        },
-        {
-            id: 2,
-            type: 'debit',
-            amount: 5000,
-            description: 'Seller withdrawal payout',
-            sellerId: 'SELL045',
-            sellerName: 'Fashion Hub Store',
-            createdAt: '2024-11-15T09:15:00Z'
-        },
-        {
-            id: 3,
-            type: 'credit',
-            amount: 125,
-            description: 'Commission from Order #ORD1235',
-            orderId: 'ORD1235',
-            sellerId: 'SELL002',
-            sellerName: 'Home Decor Plus',
-            createdAt: '2024-11-14T16:45:00Z'
-        },
-        {
-            id: 4,
-            type: 'debit',
-            amount: 75,
-            description: 'Refund reversal for cancelled order',
-            orderId: 'ORD1220',
-            sellerId: 'SELL001',
-            sellerName: 'Rajesh Electronics',
-            createdAt: '2024-11-14T14:20:00Z'
-        },
-        {
-            id: 5,
-            type: 'credit',
-            amount: 85,
-            description: 'Commission from Order #ORD1236',
-            orderId: 'ORD1236',
-            sellerId: 'SELL003',
-            sellerName: 'Tech World',
-            createdAt: '2024-11-14T11:30:00Z'
-        }
-    ];
-
-    const pendingWithdrawals = [
-        {
-            id: 1,
-            sellerId: 'SELL001',
-            sellerName: 'Rajesh Electronics',
-            amount: 5000,
-            requestedAt: '2024-11-15T12:00:00Z',
-            status: 'pending'
-        },
-        {
-            id: 2,
-            sellerId: 'SELL045',
-            sellerName: 'Fashion Hub Store',
-            amount: 3200,
-            requestedAt: '2024-11-15T10:30:00Z',
-            status: 'pending'
-        },
-        {
-            id: 3,
-            sellerId: 'SELL002',
-            sellerName: 'Home Decor Plus',
-            amount: 1800,
-            requestedAt: '2024-11-15T08:15:00Z',
-            status: 'pending'
-        },
-        {
-            id: 4,
-            sellerId: 'SELL067',
-            sellerName: 'Sports Zone',
-            amount: 2750,
-            requestedAt: '2024-11-14T18:45:00Z',
-            status: 'pending'
-        }
-    ];
-
-    const processedWithdrawals = [
-        {
-            id: 5,
-            sellerId: 'SELL034',
-            sellerName: 'Book Paradise',
-            amount: 4500,
-            requestedAt: '2024-11-12T14:20:00Z',
-            processedAt: '2024-11-13T10:15:00Z',
-            status: 'approved'
-        },
-        {
-            id: 6,
-            sellerId: 'SELL012',
-            sellerName: 'Gadget Store',
-            amount: 2200,
-            requestedAt: '2024-11-11T16:30:00Z',
-            processedAt: '2024-11-12T11:45:00Z',
-            status: 'approved'
-        },
-        {
-            id: 7,
-            sellerId: 'SELL089',
-            sellerName: 'Beauty Corner',
-            amount: 1500,
-            requestedAt: '2024-11-10T12:00:00Z',
-            processedAt: '2024-11-11T09:30:00Z',
-            status: 'rejected',
-            remarks: 'Invalid bank details provided'
-        }
-    ];
-
-    const handleWithdrawalAction = (withdrawalId, action) => {
-        console.log(`${action} withdrawal:`, withdrawalId);
-        // Add logic to approve/reject withdrawal
-    };
-
-    const formatCurrency = (amount) => `HTG ${amount.toLocaleString()}`;
-
+    // Format date
     const formatDate = (dateString) => {
+        if (!dateString) return '';
         return new Date(dateString).toLocaleDateString('en-IN', {
             year: 'numeric',
             month: 'short',
@@ -150,9 +47,230 @@ const AdminWalletDashboard = () => {
         });
     };
 
+    // Fetch admin wallet data
+    const fetchWalletData = async () => {
+        try {
+            setLoading(true);
+            
+           
+            const walletRes = await Api('get', 'wallet/admin/balance', {}, router);
+            
+            console.log('Wallet Response:', walletRes);
+            if (walletRes?.data) {
+                setWalletData({
+                    balance: walletRes.data.balance || 0,
+                    totalCommissionEarned: walletRes.data.totalCommissionEarned || 0,
+                    totalPayoutsMade: walletRes.data.totalPayoutsMade || 0,
+                    pendingWithdrawals: walletRes.data.pendingWithdrawals || 0,
+                    thisMonthCommission: walletRes.data.thisMonthCommission || 0,
+                    activeSellers: walletRes.data.activeSellers || 0
+                });
+            }
+
+            try {
+                // Fetch transactions separately to handle errors gracefully
+                const transactionsRes = await Api('get', 'wallet/transactions', {}, router);
+                console.log('Transactions Response:', transactionsRes);
+                const transactionsData = Array.isArray(transactionsRes) ? transactionsRes : 
+                                      (Array.isArray(transactionsRes?.data) ? transactionsRes.data : []);
+                setRecentTransactions(transactionsData);
+            } catch (error) {
+                console.error('Error fetching transactions:', error);
+                setRecentTransactions([]);
+            }
+
+            try {
+                // Fetch withdrawals
+                const withdrawalsRes = await Api('get', 'wallet/admin/withdrawals', {}, router);
+                console.log('Withdrawals Response:', withdrawalsRes);
+                const withdrawalsData = Array.isArray(withdrawalsRes) ? withdrawalsRes : 
+                                     (Array.isArray(withdrawalsRes?.data) ? withdrawalsRes.data : []);
+                setWithdrawals(withdrawalsData);
+            } catch (error) {
+                console.error('Error fetching withdrawals:', error);
+                setWithdrawals([]);
+            }
+
+            try {
+                // Fetch active sellers
+                const sellersRes = await Api('get', 'seller/active', {}, router);
+                console.log('Sellers Response:', sellersRes);
+                const sellersData = Array.isArray(sellersRes) ? sellersRes : 
+                                 (Array.isArray(sellersRes?.data) ? sellersRes.data : []);
+                setSellers(sellersData);
+            } catch (error) {
+                console.error('Error fetching sellers:', error);
+                setSellers([]);
+            }
+
+        } catch (error) {
+            console.error('Error in fetchWalletData:', error);
+            toast.error('Failed to load wallet data');
+        } finally {
+            setLoading(false);
+        }
+    }
+    // Handle withdrawal action (approve/reject)
+    const handleWithdrawalAction = (id, action) => {
+        console.log('handleWithdrawalAction called with:', { id, action });
+        
+        if (action === 'reject') {
+            setCurrentWithdrawal(id);
+            setShowRejectModal(true);
+            return;
+        }
+        
+        // For approve, process directly
+        processWithdrawalAction(id, action);
+    };
+
+    // Handle rejection reason submission
+    const handleRejectWithdrawal = async () => {
+        if (!rejectionReason.trim()) {
+            toast.error('Please enter a reason for rejection');
+            return;
+        }
+        
+        setShowRejectModal(false);
+        await processWithdrawalAction(currentWithdrawal, 'reject', rejectionReason);
+        setRejectionReason('');
+        setCurrentWithdrawal(null);
+    };
+
+    // Process withdrawal action (approve/reject)
+    const processWithdrawalAction = async (id, action, remarks = '') => {
+        console.log('Processing withdrawal action:', { id, action, remarks });
+        if (!id) {
+            const errorMsg = 'Invalid withdrawal ID: ' + id;
+            console.error(errorMsg);
+            toast.error(errorMsg);
+            return;
+        }
+
+        try {
+            setLoading(true);
+            
+            // Prepare request data
+            const requestData = { withdrawalId: id };
+            
+            // Add remarks if rejecting
+            if (action === 'reject') {
+                requestData.remarks = remarks;
+            }
+            
+            const url = `wallet/admin/withdrawals/${id}/${action}`;
+            const body = requestData.remarks ? { remarks: requestData.remarks } : {};
+            
+            console.log('Making API call:', {
+                method: 'PUT',
+                url,
+                body,
+                withdrawalId: id,
+                action
+            });
+            
+            const response = await Api(
+                'put', 
+                url, 
+                body, 
+                router
+            );
+            
+            console.log('API Response:', response);
+            
+            console.log(`${action.charAt(0).toUpperCase() + action.slice(1)} Response:`, response);
+            
+            const actionText = action === 'approve' ? 'approved' : 'rejected';
+            
+            // Check for both possible response structures
+            if (response?.status || response?.success || response?.data?._id) {
+                const successMessage = response?.data?.message || `Withdrawal ${actionText} successfully!`;
+                toast.success(successMessage, {
+                    position: "top-right",
+                    autoClose: 3000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true
+                });
+                fetchWalletData(); // Refresh data
+            } else {
+                throw new Error(response?.data?.message || response?.message || `Failed to ${action} withdrawal`);
+            }
+        } catch (error) {
+            console.error(`Error ${action}ing withdrawal:`, error);
+            
+            const errorMessage = error.response?.data?.message || 
+                               error.message || 
+                               `Failed to ${action} withdrawal`;
+            
+            toast.error(errorMessage, {
+                position: "top-right",
+                autoClose: 5000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
+    // Load data on component mount
+    useEffect(() => {
+        fetchWalletData();
+    }, []);
+
+
     return (
-        <div className="min-h-screen bg-gray-100" style={{ background: 'linear-gradient(135deg, #FF70009950, #FF700020)' }}>
-            <div className="container mx-auto md:px-4 px-2 md:py-8 py-4 max-h-[92vh] h-full overflow-y-scroll  scrollbar-hide overflow-scroll md:pb-10 pb-5 ">
+        <>
+            {showRejectModal && (
+                <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                        <h3 className="text-lg font-medium text-gray-700 mb-4">Enter Reason for Rejection</h3>
+                        <textarea
+                            className="w-full text-gray-700 p-2 border rounded mb-4 h-24"
+                            placeholder="Enter reason..."
+                            value={rejectionReason}
+                            onChange={(e) => setRejectionReason(e.target.value)}
+                            autoFocus
+                            dir="ltr"
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button
+                                onClick={() => {
+                                    setShowRejectModal(false);
+                                    setRejectionReason('');
+                                }}
+                                className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleRejectWithdrawal}
+                                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                            >
+                                Submit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            <ToastContainer
+                position="top-right"
+                autoClose={5000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+            />
+            <div className="min-h-screen bg-gray-100" style={{ background: 'linear-gradient(135deg, #FF70009950, #FF700020)' }}>
+                <div className="container mx-auto md:px-4 px-2 md:py-8 py-4 max-h-[92vh] h-full overflow-y-scroll scrollbar-hide overflow-scroll md:pb-10 pb-5">
 
                 <div className="bg-white rounded-2xl shadow-xl md:p-8 p-4 md:mb-8 mb-4 border border-purple-100">
                     <div className="flex md:flex-row flex-col md:items-center md:justify-between md:gap-0 gap-2 justify-start">
@@ -168,7 +286,7 @@ const AdminWalletDashboard = () => {
                         <div className="md:text-right mt-5">
                             <p className="text-sm text-gray-600">Platform Balance</p>
                             <p className="text-3xl font-bold" style={{ color: '#FF700099' }}>
-                                {formatCurrency(adminWalletData.balance)}
+                                {loading ? 'Loading...' : formatCurrency(walletData.balance)}
                             </p>
                         </div>
                     </div>
@@ -180,7 +298,9 @@ const AdminWalletDashboard = () => {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-gray-600 text-sm">Platform Balance</p>
-                                <p className="text-xl font-bold text-gray-800">{formatCurrency(adminWalletData.balance)}</p>
+                                <p className="text-xl font-bold text-gray-800">
+                                    {loading ? '...' : formatCurrency(walletData.balance)}
+                                </p>
                             </div>
                             <div className="p-3 rounded-full bg-green-100">
                                 <DollarSign className="w-6 h-6 text-green-600" />
@@ -192,7 +312,9 @@ const AdminWalletDashboard = () => {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-gray-600 text-sm">Total Commission</p>
-                                <p className="text-xl font-bold text-gray-800">{formatCurrency(adminWalletData.totalCommissionEarned)}</p>
+                                <p className="text-xl font-bold text-gray-800">
+                                    {loading ? '...' : formatCurrency(walletData.totalCommissionEarned)}
+                                </p>
                             </div>
                             <div className="p-3 rounded-full bg-blue-100">
                                 <Percent className="w-6 h-6 text-blue-600" />
@@ -204,7 +326,9 @@ const AdminWalletDashboard = () => {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-gray-600 text-sm">Total Payouts</p>
-                                <p className="text-xl font-bold text-gray-800">{formatCurrency(adminWalletData.totalPayoutsMade)}</p>
+                                <p className="text-xl font-bold text-gray-800">
+                                    {loading ? '...' : formatCurrency(walletData.totalPayoutsMade)}
+                                </p>
                             </div>
                             <div className="p-3 rounded-full bg-red-100">
                                 <ArrowUpRight className="w-6 h-6 text-red-600" />
@@ -216,7 +340,9 @@ const AdminWalletDashboard = () => {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-gray-600 text-sm">Pending Requests</p>
-                                <p className="text-xl font-bold text-gray-800">{adminWalletData.pendingWithdrawals}</p>
+                                <p className="text-xl font-bold text-gray-800">
+                                    {loading ? '...' : walletData.pendingWithdrawals}
+                                </p>
                             </div>
                             <div className="p-3 rounded-full bg-yellow-100">
                                 <Clock className="w-6 h-6 text-yellow-600" />
@@ -228,7 +354,9 @@ const AdminWalletDashboard = () => {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-gray-600 text-sm">This Month</p>
-                                <p className="text-xl font-bold text-gray-800">{formatCurrency(adminWalletData.thisMonthCommission)}</p>
+                                <p className="text-xl font-bold text-gray-800">
+                                    {loading ? '...' : formatCurrency(walletData.thisMonthCommission)}
+                                </p>
                             </div>
                             <div className="p-3 rounded-full bg-purple-100">
                                 <TrendingUp className="w-6 h-6 text-purple-600" />
@@ -240,7 +368,9 @@ const AdminWalletDashboard = () => {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-gray-600 text-sm">Active Sellers</p>
-                                <p className="text-xl font-bold text-gray-800">{adminWalletData.activeSellers}</p>
+                                <p className="text-xl font-bold text-gray-800">
+                                    {loading ? '...' : walletData.activeSellers}
+                                </p>
                             </div>
                             <div className="p-3 rounded-full" style={{ backgroundColor: '#FF70001A' }}>
                                 <Users className="w-6 h-6" style={{ color: '#FF700099' }} />
@@ -279,9 +409,9 @@ const AdminWalletDashboard = () => {
                         >
                             <Clock className="w-4 h-4 sm:w-5 sm:h-5 inline mr-2" />
                             Pending Withdrawals
-                            {pendingWithdrawals.length > 0 && (
+                            {withdrawals.filter(w => w.status === 'pending').length > 0 && (
                                 <span className="absolute top-1 right-1 sm:-top-1 sm:-right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 sm:px-2 sm:py-1">
-                                    {pendingWithdrawals.length}
+                                    {withdrawals.filter(w => w.status === 'pending').length}
                                 </span>
                             )}
                         </button>
@@ -369,7 +499,9 @@ const AdminWalletDashboard = () => {
                                 <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2 sm:mb-4">
                                     Pending Withdrawal Requests
                                 </h3>
-                                {pendingWithdrawals.map((withdrawal) => (
+                                {withdrawals
+                                    .filter(w => w.status === 'pending')
+                                    .map((withdrawal) => (
                                     <div
                                         key={withdrawal.id}
                                         className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-yellow-50 rounded-xl border border-yellow-200 gap-3 sm:gap-0"
@@ -403,18 +535,20 @@ const AdminWalletDashboard = () => {
                                             </div>
                                             <div className="flex gap-2">
                                                 <button
-                                                    onClick={() =>
-                                                        handleWithdrawalAction(withdrawal.id, 'approve')
-                                                    }
+                                                    onClick={() => {
+                                                        console.log('Approve clicked, withdrawal ID:', withdrawal._id);
+                                                        handleWithdrawalAction(withdrawal._id, 'approve');
+                                                    }}
                                                     className="px-3 sm:px-4 py-1.5 sm:py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-200 text-xs sm:text-sm font-semibold"
                                                 >
                                                     <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
                                                     Approve
                                                 </button>
                                                 <button
-                                                    onClick={() =>
-                                                        handleWithdrawalAction(withdrawal.id, 'reject')
-                                                    }
+                                                    onClick={() => {
+                                                        console.log('Reject clicked, withdrawal ID:', withdrawal._id);
+                                                        handleWithdrawalAction(withdrawal._id, 'reject');
+                                                    }}
                                                     className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all duration-200 text-xs sm:text-sm font-semibold"
                                                 >
                                                     <XCircle className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
@@ -433,7 +567,9 @@ const AdminWalletDashboard = () => {
                                 <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-2 sm:mb-4">
                                     Recently Processed Withdrawals
                                 </h3>
-                                {processedWithdrawals.map((withdrawal) => (
+                                {withdrawals
+                                    .filter(w => w.status !== 'pending')
+                                    .map((withdrawal) => (
                                     <div
                                         key={withdrawal.id}
                                         className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-xl gap-3 sm:gap-0"
@@ -546,7 +682,10 @@ const AdminWalletDashboard = () => {
                 </div>
             </div>
         </div>
-    );
+        <ToastContainer />
+    </>
+);
 };
+
 
 export default AdminWalletDashboard;

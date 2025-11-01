@@ -1,21 +1,28 @@
-import { Api } from "@/services/service";
+import { Api, ApiFormData } from "@/services/service";
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import { FiEdit, FiChevronDown, FiChevronRight } from "react-icons/fi";
+import { FiEdit, FiChevronDown, FiChevronRight, FiUpload, FiX } from "react-icons/fi";
 import { IoCloseCircleOutline } from "react-icons/io5";
 import Swal from "sweetalert2";
 import isAuth from "@/components/isAuth";
 import { Edit, Pencil, Trash } from "lucide-react";
 import { toast } from "react-toastify";
-
+import Image from "next/image";
 
 function Categories(props) {
   const router = useRouter();
   const categoryRef = useRef();
   const subCategoryRef = useRef();
-  const [data, setData] = useState({ name: "" });
+  const [data, setData] = useState({ name: "", image: null, preview: "", currentImage: "" });
   const [categories, setCategories] = useState([]);
-  const [subData, setSubData] = useState({ name: "", categoryId: "", Attribute: [] });
+  const [subData, setSubData] = useState({ 
+    name: "", 
+    categoryId: "", 
+    Attribute: [],
+    image: null,
+    preview: "",
+    currentImage: ""
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [hideCategory, setHideCategory] = useState(true);
   const [showSubcategoryForm, setShowSubcategoryForm] = useState(false);
@@ -65,36 +72,95 @@ function Categories(props) {
     }
   };
 
+  const handleCategoryImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setData({
+          ...data,
+          image: file,
+          preview: reader.result
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubcategoryImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSubData({
+          ...subData,
+          image: file,
+          preview: reader.result
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeCategoryImage = () => {
+    setData({
+      ...data,
+      image: null,
+      preview: "",
+      currentImage: ""
+    });
+  };
+
+  const removeSubcategoryImage = () => {
+    setSubData({
+      ...subData,
+      image: null,
+      preview: "",
+      currentImage: ""
+    });
+  };
+
   const submitCategory = async (e) => {
     e.preventDefault();
     if (!data.name) {
-      toast.error("Please fill in the category name")
+      toast.error("Please fill in the category name");
       return;
     }
 
-    if (notAvailableSubCategory) {
-      if (addAttribute.length === 0) {
-        return toast.error("Please add at least one attribute");
-      }
-      data.Attribute = addAttribute;
+    if (notAvailableSubCategory && addAttribute.length === 0) {
+      return toast.error("Please add at least one attribute");
     }
 
-    data.notAvailableSubCategory = notAvailableSubCategory;
+    const formData = new FormData();
+    formData.append("name", data.name);
+    formData.append("notAvailableSubCategory", notAvailableSubCategory);
+    
+    // Only append currentImage if it exists and is not an empty string
+    if (data.currentImage) {
+      formData.append("currentImage", data.currentImage);
+    }
+    
+    if (data.image) {
+      formData.append("image", data.image);
+    }
+    
+    if (notAvailableSubCategory) {
+      formData.append("Attribute", JSON.stringify(addAttribute));
+    }
 
     const method = data._id ? "post" : "post";
     const url = data._id ? `category/updateCategory` : `category/createCategory`;
-    console.log(data)
 
     try {
-      await Api(method, url, data, router);
-      setData({ name: "" });
-      setAddAttribute([])
-      toast.success("Category Added")
-      setNotAvailableSubCategory(false)
+      const response = await ApiFormData(method, url, formData, router);
+      setData({ name: "", image: null, preview: "", currentImage: "" });
+      setAddAttribute([]);
+      toast.success(data._id ? "Category updated successfully" : "Category added successfully");
+      setNotAvailableSubCategory(false);
       getAllCategories();
     } catch (err) {
-
-      toast.error(err?.message)
+      console.error("Error in submitCategory:", err);
+      toast.error(err?.message || "Something went wrong");
     }
   };
 
@@ -109,19 +175,38 @@ function Categories(props) {
       return toast.error("Please add at least one attribute");
     }
 
-    subData.Attribute = addAttribute;
+    const formData = new FormData();
+    formData.append("name", subData.name);
+    formData.append("categoryId", subData.categoryId);
+    formData.append("Attribute", JSON.stringify(addAttribute));
+    
+    // Only append currentImage if it exists and is not an empty string
+    if (subData.currentImage) {
+      formData.append("currentImage", subData.currentImage);
+    }
+    
+    if (subData._id) {
+      formData.append("_id", subData._id);
+    }
+    
+    if (subData.image) {
+      formData.append("image", subData.image);
+    }
+
     const method = subData._id ? "post" : "post";
     const url = subData._id ? `category/updateSubcategory` : `category/addSubcategory`;
 
     try {
-      await Api(method, url, subData, router);
-      setSubData({ name: "", categoryId: "" });
+      await ApiFormData(method, url, formData, router);
+      setSubData({ name: "", categoryId: "", image: null, preview: "", currentImage: "" });
       setShowSubcategoryForm(false);
-      toast.success("SubCategory Added")
       setHideCategory(true);
+      setAddAttribute([]);
+      toast.success(subData._id ? "Subcategory updated successfully" : "Subcategory added successfully");
       getAllCategories();
     } catch (err) {
-      toast.error(err?.message)
+      console.error("Error in submitSubcategory:", err);
+      toast.error(err?.message || "Something went wrong");
     }
   };
 
@@ -181,21 +266,46 @@ function Categories(props) {
       ...subcategory,
       categoryId: categoryId,
       Attribute: Attribute,
+      currentImage: subcategory.image?.url || "",
+      preview: subcategory.image?.url || ""
     });
+    setAddAttribute(Attribute || []);
     setShowSubcategoryForm(true);
     setHideCategory(false);
+    scrollToSubCategory();
   };
 
   const handleCancelSubcategory = () => {
     setHideCategory(true);
-    setSubData({ name: "", categoryId: "" });
+    setSubData({ name: "", categoryId: "", image: null, preview: "", currentImage: "" });
     setShowSubcategoryForm(false);
+    setAddAttribute([]);
+  };
+  
+  const handleCancelCategory = () => {
+    setData({ name: "", image: null, preview: "", currentImage: "" });
+    setAddAttribute([]);
+    setNotAvailableSubCategory(false);
   };
 
   const AvailableSubCategoryCategory = categories.filter(
     (item) => item.notAvailableSubCategory === false
   );
 
+  const handleEditCategory = (category) => {
+    setData({
+      _id: category._id,
+      name: category.name,
+      notAvailableSubCategory: category.notAvailableSubCategory || false,
+      currentImage: category.image?.url || "",
+      preview: category.image?.url || ""
+    });
+    if (category.Attribute && category.Attribute.length > 0) {
+      setAddAttribute(category.Attribute);
+    }
+    setNotAvailableSubCategory(category.notAvailableSubCategory || false);
+    scrollToCategory();
+  };
 
   return (
     <section className="bg-gray-100 w-full h-full md:pt-5 pt-5 pl-5 pr-5 overflow-y-scroll   scrollbar-hide overflow-scroll pb-28">
@@ -215,21 +325,67 @@ function Categories(props) {
             className=" flex flex-col justify-center items-center bg-white "
             onSubmit={submitCategory}
           >
-            <input
-              className="bg-gray-100 border border-custom-offWhite outline-none py-[10px] md:w-[400px] w-[300px] rounded-[30px] px-5 text-sm font-normal text-black mb-2"
-              type="text"
-              placeholder="Enter category name"
-              value={data.name}
-              onChange={(e) => setData({ ...data, name: e.target.value })}
-              required
-            />
+            <div className="mb-4">
+              <label className="block text-gray-700 text-sm font-bold mb-2">
+                Category Name
+              </label>
+              <input
+                type="text"
+                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                placeholder="Enter category name"
+                value={data.name}
+                onChange={(e) => setData({ ...data, name: e.target.value })}
+                required
+              />
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-gray-700 text-sm font-bold mb-2">
+                Category Image
+              </label>
+              <div className="flex items-center gap-4">
+                {(data.preview || data.currentImage) && (
+                  <div className="relative">
+                    <Image
+                      src={data.preview || data.currentImage}
+                      alt="Category Preview"
+                      width={80}
+                      height={80}
+                      className="rounded-md object-cover border border-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeCategoryImage}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 flex items-center justify-center"
+                      style={{ width: '20px', height: '20px' }}
+                    >
+                      <FiX size={12} />
+                    </button>
+                  </div>
+                )}
+                <div>
+                  <label className="cursor-pointer bg-custom-orange text-black text-sm font-medium py-2 px-4 rounded-full inline-flex items-center border border-black">
+                    <FiUpload className="mr-2" size={16} />
+                    <span>{data.preview || data.currentImage ? 'Change Image' : 'Upload Image'}</span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleCategoryImageChange}
+                    />
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">Recommended size: 400x400px</p>
+                </div>
+              </div>
+            </div>
+
             <div className="flex my-2 justify-start items-center gap-4">
               <input
                 type="checkbox"
                 value="notAvailableCategory"
                 checked={notAvailableSubCategory}
                 onChange={(e) => {
-                  setNotAvailableSubCategory(e.target.checked); // ✅ gives true or false
+                  setNotAvailableSubCategory(e.target.checked); // gives true or false
                 }}
                 className="w-3 h-3"
               />
@@ -237,7 +393,6 @@ function Categories(props) {
                 Subcategories Not Available
               </label>
             </div>
-
 
             {notAvailableSubCategory && (
               <div className="mt-0">
@@ -280,13 +435,25 @@ function Categories(props) {
               </div>
             )}
 
-
-            <button
-              className="py-[6px]  w-[300px] bg-custom-orange rounded-[5px] text-[12px]  text-black cursor-pointer font-normal"
-              type="submit"
-            >
-              {data._id ? "Update Category" : "Add Now"}
-            </button>
+            <div className="flex justify-between">
+              <div className="space-x-2">
+                <button
+                  type="submit"
+                  className="bg-custom-orange text-gray-900  py-1.5 px-8  mb-4 rounded focus:outline-none focus:shadow-outline"
+                >
+                  {data._id ? 'Update Category' : 'Add Category'}
+                </button>
+                {(data._id || data.name || data.preview || data.currentImage) && (
+                  <button
+                    type="button"
+                    onClick={handleCancelCategory}
+                    className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </div>
           </form>
           {!showSubcategoryForm && (
             <div className="mb-5 mt-2">
@@ -314,6 +481,57 @@ function Categories(props) {
             {" "}
             Add Sub Categories
           </p>
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2">
+              Subcategory Name
+            </label>
+            <input
+              type="text"
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              placeholder="Enter subcategory name"
+              value={subData.name}
+              onChange={(e) =>
+                setSubData({ ...subData, name: e.target.value })
+              }
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block text-gray-700 text-sm font-bold mb-2">
+              Subcategory Image
+            </label>
+            <div className="flex items-center space-x-4">
+              {(subData.preview || subData.currentImage) && (
+                <div className="relative">
+                  <Image
+                    src={subData.preview || subData.currentImage}
+                    alt="Subcategory Preview"
+                    width={80}
+                    height={80}
+                    className="rounded-md object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeSubcategoryImage}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                  >
+                    <FiX size={16} />
+                  </button>
+                </div>
+              )}
+              <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded inline-flex items-center">
+                <FiUpload className="mr-2" />
+                <span>{subData.preview || subData.currentImage ? 'Change Image' : 'Upload Image'}</span>
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleSubcategoryImageChange}
+                />
+              </label>
+            </div>
+          </div>
+
           <select
             className="bg-gray-100 border outline-none py-[10px] md:w-[400px] w-full rounded-[30px] px-5 text-[12px] font-normal text-black mb-3"
             value={subData.categoryId}
@@ -329,14 +547,6 @@ function Categories(props) {
               </option>
             ))}
           </select>
-          <input
-            className="bg-gray-100 border outline-none py-[10px] md:w-[400px] w-full rounded-[30px] px-5 text-[12px] font-normal text-black mb-3"
-            type="text"
-            placeholder="Name of Subcategory"
-            value={subData.name}
-            onChange={(e) => setSubData({ ...subData, name: e.target.value })}
-            required
-          />
 
           <div className="mt-0">
             <p className="text-gray-500 font-semibold text-[12px] pb-1 ">
@@ -415,8 +625,19 @@ function Categories(props) {
             className="bg-white border border-gray-100 rounded-[10px] p-5 mt-5"
           >
             <div className="flex md:flex-row gap-2 flex-col justify-start items-start md:justify-between md:items-center w-full">
-              <div className="flex justify-start items-center">
-                <p className="text-base text-black font-semibold ">
+              <div className="flex justify-start items-center gap-3">
+                {item.image?.url && (
+                  <div className="w-10 h-10 rounded-md overflow-hidden border border-gray-200">
+                    <Image
+                      src={item.image.url}
+                      alt={item.name}
+                      width={40}
+                      height={40}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+                <p className="text-base text-black font-semibold">
                   {item.name}
                 </p>
               </div>
@@ -477,7 +698,20 @@ function Categories(props) {
                       key={sub._id}
                       className="flex md:flex-row gap-2 flex-col justify-start items-start md:justify-between md:items-center bg-gray-100 border border-gray-200 rounded-[5px] p-3 mt-2"
                     >
-                      <p className="text-black font-medium">{sub.name}</p>
+                      <div className="flex items-center gap-3">
+                        {sub.image?.url && (
+                          <div className="w-8 h-8 rounded-md overflow-hidden border border-gray-200">
+                            <Image
+                              src={sub.image.url}
+                              alt={sub.name}
+                              width={32}
+                              height={32}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+                        <p className="text-black font-medium">{sub.name}</p>
+                      </div>
                       <div className="flex gap-4">
                         <div className="flex gap-1 items-center cursor-pointer"
                           onClick={() => {

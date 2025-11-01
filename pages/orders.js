@@ -30,6 +30,7 @@ import {
 function Orders(props) {
   const router = useRouter();
   const [user, setUser] = useContext(userContext);
+  const [isLoading, setIsLoading] = useState(true);
   const [userRquestList, setUserRquestList] = useState([]);
   const [openCart, setOpenCart] = useState(false);
   const [cartData, setCartData] = useState({});
@@ -44,10 +45,10 @@ function Orders(props) {
     itemsPerPage: 10,
   });
 
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
-    getOrderBySeller(selctDate, selectedPikcupOption, page, orderId);
-  };
+ const handlePageChange = (page) => {
+  setCurrentPage(page);
+  getOrderBySeller(selctDate, page, 10, orderId);
+};
 
   const BRAND_COLOR = "#FF700099";
 
@@ -57,13 +58,15 @@ function Orders(props) {
   };
 
   useEffect(() => {
-    const dateToSend = isDateSelectedManually ? selctDate : null;
-    getOrderBySeller(
-      dateToSend,
-      currentPage,
-      orderId
-    );
-  }, [selctDate, currentPage, orderId]);
+    // Only fetch orders if we have a valid user ID
+    if (user?._id) {
+      const dateToSend = isDateSelectedManually ? selctDate : null;
+      getOrderBySeller(dateToSend, currentPage, 10, orderId);
+    } else {
+      console.log('Waiting for user data...');
+      setIsLoading(false);
+    }
+  }, [user, selctDate, currentPage, orderId]);
 
   const resetFilters = () => {
     setSelctDate("");
@@ -74,40 +77,65 @@ function Orders(props) {
   const getOrderBySeller = async (
     selctDate,
     page = 1,
-    limit = 10
+    limit = 10,
+    orderId = ""
   ) => {
-    const data = {};
+    setIsLoading(true);
+    // Make sure we have a valid user ID
+    if (!user?._id) {
+      console.error("No user ID available");
+      props.toaster({ type: "error", message: "User not authenticated" });
+      setIsLoading(false);
+      return;
+    }
 
+    let queryParams = `pageNumber=${page}&limit=${limit}`;
+    
     if (selctDate) {
-      data.curentDate = moment(new Date(selctDate)).format();
+      queryParams += `&date=${moment(selctDate).format('YYYY-MM-DD')}`;
     }
 
     if (orderId) {
-      data.orderId = orderId;
+      queryParams += `&orderId=${orderId}`;
     }
 
-    props.loader(true);
+    console.log(`Fetching orders for seller: ${user._id} with params:`, { 
+      page, 
+      limit, 
+      selctDate, 
+      orderId 
+    });
+    
+    // Show loading state
+    props.loader && props.loader(true);
 
-    Api(
-      "post",
-      `getOrderBySeller?page=${page}&limit=${limit}&SellerId=${user._id}`,
-      data,
-      router
-    ).then(
-      (res) => {
-        props.loader(false);
-        console.log("res================>", res.data);
-        setUserRquestList(res?.data);
-        setPagination(res?.pagination);
-        setCurrentPage(res?.pagination?.currentPage);
-        console.log(res?.pagination);
-      },
-      (err) => {
-        props.loader(false);
-        console.log(err);
-        props.toaster({ type: "error", message: err?.message });
-      }
-    );
+    try {
+      const response = await Api(
+        "get",
+        `orders/seller/${user._id}?${queryParams}`,
+        null,
+        router
+      );
+
+      console.log("Orders by seller:", response);
+      setUserRquestList(response?.data || []);
+      setPagination({
+        totalPages: response?.pages || 1,
+        currentPage: page,
+        itemsPerPage: limit,
+        totalItems: response?.count || 0
+      });
+      setCurrentPage(page);
+    } catch (err) {
+      console.error("Error fetching orders:", err);
+      props.toaster && props.toaster({ 
+        type: "error", 
+        message: err?.message || 'Failed to fetch orders' 
+      });
+    } finally {
+      setIsLoading(false);
+      props.loader && props.loader(false);
+    }
   };
 
   function convertISODateToFormattedString(isoDateString) {
@@ -132,31 +160,30 @@ function Orders(props) {
     return `${day} ${monthNames[monthIndex]} ${year}`;
   }
 
-  function name({ value }) {
+  function name({ row }) {
+    const customerName = row.original.shippingAddress?.name || row.original.user?.name || 'N/A';
     return (
       <div>
         <p className="text-black text-[15px] font-normal text-center">
-          {value}
+          {customerName}
         </p>
       </div>
     );
   }
 
-  function Status({ value }) {
-    const statusColors = {
-      Pending: "text-yellow-500",
-      Completed: "text-green-600",
-      Return: "text-blue-500",
-      Cancel: "text-red-500",
-      "Return Requested": "text-purple-500",
+  function Status({ row }) {
+    const getStatus = (order) => {
+      if (order.isDelivered) return { text: 'Delivered', color: 'text-green-600' };
+      if (order.isPaid) return { text: 'Paid - Processing', color: 'text-blue-600' };
+      return { text: ' Pending', color: 'text-yellow-500' };
     };
 
-    const textColor = statusColors[value] || "text-gray-500"; // fallback color
+    const status = getStatus(row.original);
 
     return (
       <div>
-        <p className={`${textColor} text-[15px] font-semibold text-center`}>
-          {value}
+        <p className={`text-center text-[15px] font-medium ${status.color}`}>
+          {status.text}
         </p>
       </div>
     );
@@ -172,11 +199,13 @@ function Orders(props) {
     );
   }
 
-  function mobile({ value }) {
+  function mobile({ row }) {
+    // Get phone number from shippingAddress
+    const phoneNumber = row.original.shippingAddress?.phone || 'N/A';
     return (
       <div>
         <p className="text-black text-[15px] font-normal text-center">
-          {value}
+          {phoneNumber}
         </p>
       </div>
     );
@@ -184,17 +213,16 @@ function Orders(props) {
 
   const info = ({ value, row }) => {
     return (
-      <div className=" p-4  flex items-center  justify-center">
+      <div className="p-4 flex items-center justify-center">
         <button
           className="h-[38px] w-[93px] bg-[#00000020] text-black text-[15px] cursor-pointer font-normal rounded-[8px]"
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             setOpenCart(true);
             setCartData(row.original);
-            console.log(row.original.note);
-            console.log("", row.original);
           }}
         >
-          See
+          View
         </button>
       </div>
     );
@@ -210,7 +238,22 @@ function Orders(props) {
     );
   };
 
-  const [isLoading, setIsLoading] = useState(false);
+
+  const SellerCell = ({ value, row }) => {
+    // Get unique sellers from order items
+    const sellers = [...new Set(row.original.orderItems
+      .filter(item => item.product?.SellerId)
+      .map(item => item.product.SellerId.name)
+    )].join(', ');
+    
+    return (
+      <div>
+        <p className="text-black text-[15px] font-normal text-center">
+          {sellers || 'N/A'}
+        </p>
+      </div>
+    );
+  };
 
   const columns = useMemo(
     () => [
@@ -222,9 +265,12 @@ function Orders(props) {
         Header: "Order #",
         Cell: OrderID,
       },
-
       {
-        Header: "NAME",
+        Header: "Seller",
+        Cell: SellerCell,
+      },
+      {
+        Header: "Customer",
         accessor: "user.name",
         Cell: name,
       },
@@ -233,9 +279,8 @@ function Orders(props) {
         accessor: "user.phone",
         Cell: mobile,
       },
-
       {
-        Header: "Order Status",
+        Header: "Status",
         accessor: "status",
         Cell: Status,
       },
@@ -372,70 +417,108 @@ function Orders(props) {
                 </div>
               )}
 
+              {/* Order Summary */}
               <div className="px-5 pt-4">
+                <h3 className="text-gray-800 font-medium mb-3">Order Summary</h3>
+                <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="font-medium text-gray-700 mb-2">Shipping Address</h4>
+                      {cartData?.shippingAddress ? (
+                        <div className="text-sm text-gray-600">
+                          <p>{cartData.shippingAddress.name}</p>
+                          <p>{cartData.shippingAddress.address}</p>
+                          <p>{cartData.shippingAddress.city}, {cartData.shippingAddress.postalCode}</p>
+                          <p>{cartData.shippingAddress.country}</p>
+                          <p className="mt-2">
+                            <span className="font-medium">Phone:</span> {cartData.shippingAddress.phone}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500">No shipping address provided</p>
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-700 mb-2">Order Information</h4>
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <p><span className="font-medium">Order ID:</span> {cartData?.orderId}</p>
+                        <p><span className="font-medium">Order Date:</span> {cartData?.createdAt ? new Date(cartData.createdAt).toLocaleDateString() : 'N/A'}</p>
+                        <p><span className="font-medium">Payment Method:</span> {cartData?.paymentMethod ? cartData.paymentMethod.charAt(0).toUpperCase() + cartData.paymentMethod.slice(1) : 'N/A'}</p>
+                        <p><span className="font-medium">Total Items:</span> {cartData?.orderItems?.length || 0}</p>
+                        <p><span className="font-medium">Order Total:</span> ${cartData?.totalPrice?.toFixed(2)}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <h3 className="text-gray-800 font-medium mb-3">Order Items</h3>
-                {cartData?.productDetail?.map((item, i) => (
+                {cartData?.orderItems?.map((item, i) => (
                   <div
                     key={i}
-                    className="border-b border-gray-100 py-4 cursor-pointer hover:bg-gray-50 transition-colors rounded-lg"
-                    onClick={() => {
-                      router.push(
-                        `/orders-details/${cartData?._id}?product_id=${item?._id}`
-                      );
-                    }}
+                    className="border-b border-gray-100 py-4 rounded-lg"
                   >
-                    <div className="flex items-center justify-center p-1 bg-white shadow-md rounded-lg">
-                      <div className=" bg-gray-50 rounded-lg ">
+                    <div className="flex items-center p-4 bg-white shadow-sm rounded-lg hover:bg-gray-50 transition-colors">
+                      <div 
+                        className="flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (item?.product?._id) {
+                            router.push(`/products/${item.product._id}`);
+                          }
+                        }}
+                      >
                         <img
-                          className="w-[80px] h-[140px] object-contain"
-                          src={item?.image[0]}
-                          alt={item?.product?.name}
+                          className="w-20 h-20 object-contain"
+                          src={item?.image || (item.product?.image?.[0] || '/placeholder-product.png')}
+                          alt={item?.name || item?.product?.name}
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = '/placeholder-product.png';
+                          }}
                         />
                       </div>
 
                       <div className="ml-4 flex-grow">
-                        <p className="text-gray-800 font-semibold text-[16px]">
-                          {item?.product?.name}
-                        </p>
-                        <div className="flex flex-wrap ">
-                          <div className="flex flex-col items-start mt-1">
-                            <div className="flex mt-1">
-                              <span className="text-gray-700 text-sm mr-1 font-medium">
-                                Qty:
-                              </span>
-                              <span className="text-gray-700 text-sm">
-                                {item?.qty}
-                              </span>
-                            </div>
-
-                            {item?.color && (
-                              <div className="flex mt-1">
-                                <span className="text-gray-700 text-sm mr-1 font-medium">
-                                  Color:
-                                </span>
-                                <span className="text-gray-700 text-sm">
-                                  {item?.color || "N/A"}
-                                </span>
-                              </div>
-                            )}
-                            {item?.attribute && (
-                              Object.entries(item.attribute)
-                                .filter(([key]) => key.toLowerCase() !== "color")
-                                .map(([label, value], index) => (
-                                  <div key={index} className="text-gray-700 text-sm mb-1 font-medium">
-                                    {label}: <span className="text-gray-700 text-sm">{value || "Not found"}</span>
-                                  </div>
-                                ))
-                            )}
+                        <div className="flex justify-between items-start">
+                          <p className="text-gray-800 font-semibold text-[16px]">
+                            {item?.name || item?.product?.name}
+                          </p>
+                          <p className="text-gray-800 font-medium">
+                            ${item?.price?.toFixed(2) || '0.00'}
+                          </p>
+                        </div>
+                        
+                        <div className="mt-1 space-y-1">
+                          <div className="flex items-center text-sm text-gray-600">
+                            <span className="font-medium w-20">Qty:</span>
+                            <span>{item?.qty || 1}</span>
                           </div>
+                          
+                          {item?.product?.SellerId && (
+                            <div className="flex items-center text-sm text-gray-600">
+                              <span className="font-medium w-20">Seller:</span>
+                              <span>{item.product.SellerId.name || 'N/A'}</span>
+                            </div>
+                          )}
+                          
+                          {item?.color && (
+                            <div className="flex items-center text-sm text-gray-600">
+                              <span className="font-medium w-20">Color:</span>
+                              <span>{item.color}</span>
+                            </div>
+                          )}
+                          
+                          {item?.attribute && Object.entries(item.attribute)
+                            .filter(([key]) => key.toLowerCase() !== 'color')
+                            .map(([label, value], index) => (
+                              <div key={index} className="flex items-center text-sm text-gray-600">
+                                <span className="font-medium w-20 capitalize">{label}:</span>
+                                <span>{value || 'N/A'}</span>
+                              </div>
+                            ))}
                         </div>
                       </div>
 
-                      <div className="ml-auto">
-                        <p className="text-custom-orange font-semibold text-lg">
-                          ${item?.price}
-                        </p>
-                      </div>
                     </div>
                   </div>
                 ))}
@@ -496,10 +579,41 @@ function Orders(props) {
               </div>
             </div>
 
-            {/* Total Section - Fixed at Bottom */}
-            <div className="fixed bottom-0  right-0 bg-white px-2 py-2 border-t border-gray-200 md:w-[43vw] w-[380px]">
-              <button className="bg-custom-orange w-full py-4 rounded-lg text-black text-lg font-bold flex justify-center items-center">
-                Total: ${cartData?.total}
+            {/* Order Summary Footer */}
+            <div className="fixed bottom-0 right-0 bg-white px-5 py-4 border-t border-gray-200 md:w-[43vw] w-[380px]">
+              <div className="space-y-2 text-sm text-gray-700">
+                <div className="flex justify-between">
+                  <span>Subtotal ({cartData?.orderItems?.length || 0} items):</span>
+                  <span>${cartData?.itemsPrice?.toFixed(2) || '0.00'}</span>
+                </div>
+                {cartData?.shippingPrice > 0 && (
+                  <div className="flex justify-between">
+                    <span>Shipping:</span>
+                    <span>${cartData.shippingPrice.toFixed(2)}</span>
+                  </div>
+                )}
+                {cartData?.taxPrice > 0 && (
+                  <div className="flex justify-between">
+                    <span>Tax:</span>
+                    <span>${cartData.taxPrice.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="border-t border-gray-200 my-2"></div>
+                <div className="flex justify-between font-bold text-lg">
+                  <span>Total:</span>
+                  <span>${cartData?.totalPrice?.toFixed(2) || '0.00'}</span>
+                </div>
+              </div>
+              
+              <button 
+                className="w-full py-3 rounded-lg text-white text-lg font-bold mt-4"
+                style={{ backgroundColor: BRAND_COLOR }}
+                onClick={() => {
+                  // Add any action you want when clicking the button
+                  // For example: Mark as Shipped, Print Invoice, etc.
+                }}
+              >
+                {cartData?.isDelivered ? 'Order Completed' : 'Mark as Shipped'}
               </button>
             </div>
           </div>
@@ -510,7 +624,7 @@ function Orders(props) {
             <div className="flex justify-center items-center p-20">
               <div
                 className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2"
-                style={{ borderColor: primaryColor }}
+                style={{ borderColor: BRAND_COLOR }}
               ></div>
             </div>
           ) : userRquestList.length === 0 ? (

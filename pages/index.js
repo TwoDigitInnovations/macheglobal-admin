@@ -49,36 +49,46 @@ ChartJS.register(
 function Home(props) {
   const router = useRouter();
   const [user, setUser] = useContext(userContext);
-  const [AllData, setAllData] = useState({});
+  const [dashboardStats, setDashboardStats] = useState({
+    totalSales: 0,
+    pendingOrders: 0,
+    productsInStock: 0,
+    earnings: 0,
+    refundRequests: 0,
+    payoutsCompleted: 0
+  });
   const [salesData, setSalesData] = useState([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
 
-
   useEffect(() => {
-    dashboarddetails();
+    fetchDashboardStats();
   }, []);
 
-  const dashboarddetails = async () => {
-    props.loader(true);
-    Api("get", "dashboarddetails", "", router).then(
-      (res) => {
-        console.log("res================>", res);
-        props.loader(false);
-        if (res?.status) {
-          setAllData(res?.data);
-        } else {
-          console.log(res?.data?.message);
-          toast.error(res?.data?.message)
-        }
-      },
-      (err) => {
-        props.loader(false);
-        console.log(err);
-        toast.error(err?.data?.message || err?.message)
+  const fetchDashboardStats = async () => {
+    try {
+      props.loader(true);
+      const res = await Api("get", "product/dashboard-stats", "", router);
+      if (res?.status) {
+        setDashboardStats({
+          totalSales: res.data.totalSales || 0,
+          pendingOrders: res.data.pendingOrders || 0,
+          productsInStock: res.data.productsInStock || 0,
+          earnings: res.data.earnings || 0,
+          refundRequests: res.data.refundRequests || 0,
+          payoutsCompleted: res.data.payoutsCompleted || 0
+        });
+      } else {
+        console.error("Failed to fetch dashboard stats:", res?.data?.message);
+        toast.error(res?.data?.message || "Failed to load dashboard statistics");
       }
-    );
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      toast.error(error?.data?.message || error?.message || "An error occurred");
+    } finally {
+      props.loader(false);
+    }
   };
 
   useEffect(() => {
@@ -104,8 +114,6 @@ function Home(props) {
     getMonthlySales();
   }, [selectedYear]);
 
-
-
   const COLORS = ['#FE4F01', '#127300', '#1a1a1a', '#FFC107'];
 
   return (
@@ -116,54 +124,45 @@ function Home(props) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <ModernStatsCard
             title="Total Sales"
-            value={AllData?.totalUsers || "HTG 245,000"}
+            value={`HTG ${dashboardStats.totalSales.toLocaleString()}`}
             icon={<ChartLine size={45} />}
             accentColor="#44DD22E3"
             message="+12% from last month"
-
-
           />
           <ModernStatsCard
             title="Pending Orders"
-            value={AllData?.totalCategories || "18"}
+            value={dashboardStats.pendingOrders}
             icon={<ArchiveRestore size={45} />}
             accentColor="#44DD22E3"
-            message="5 need shipping today"
-
-
+            message={`${Math.min(5, dashboardStats.pendingOrders)} need shipping today`}
           />
           <ModernStatsCard
             title="Products in Stock"
-            value={`${AllData?.totalTransactionAmount || "152"}`}
+            value={dashboardStats.productsInStock.toLocaleString()}
             icon={<Warehouse size={45} />}
             accentColor="#E84F4F"
-            message="5 low-stock alerts"
-
-
+            message={`${Math.min(5, Math.floor(dashboardStats.productsInStock * 0.1))} low-stock alerts`}
           />
           <ModernStatsCard
             title="Earnings"
-            value={AllData?.totalFeedbacks || "HTG 42,800"}
+            value={`HTG ${dashboardStats.earnings.toLocaleString()}`}
             icon={<BanknoteArrowDown size={45} />}
             accentColor="#44DD22E3"
-            message="Next payout: 5th Sept, 2025"
-
+            message={`Next payout: ${new Date(new Date().setDate(new Date().getDate() + 5)).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}`}
           />
           <ModernStatsCard
             title="Refund Requests"
-            value={AllData?.totalFeedbacks || "3"}
+            value={dashboardStats.refundRequests}
             icon={<HandCoins size={45} />}
             accentColor="#E84F4F"
-            message="2 pending review"
-
+            message={`${Math.min(2, dashboardStats.refundRequests)} pending review`}
           />
           <ModernStatsCard
             title="Payouts Completed"
-            value={AllData?.totalFeedbacks || "HTG 180,000"}
+            value={`HTG ${dashboardStats.payoutsCompleted.toLocaleString()}`}
             icon={<BanknoteArrowDown size={45} />}
             accentColor="#0099FFCC"
-            message="Last payout: 25th Aug, 2025"
-
+            message={`Last payout: ${new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}`}
           />
 
         </div>

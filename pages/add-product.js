@@ -1,6 +1,6 @@
 import Table from "@/components/table";
 import { Api, ApiFormData } from "../services/service";
-import React, { useState, useMemo, useEffect, useRef, useContext } from "react";
+import React, { useState, useMemo, useEffect, useRef, useContext, useCallback } from "react";
 import { useRouter } from "next/router";
 import { MdOutlineFileUpload } from "react-icons/md";
 import { ColorPicker, useColor } from "react-color-palette";
@@ -56,6 +56,21 @@ function Products(props) {
     long_description: "",
     Quantity: "",
   });
+  
+  // Memoize the editor config to prevent re-renders
+  const editorConfig = useMemo(() => ({
+    ...config,
+    readonly: false,
+    placeholder: !productsData.long_description ? "Start writing..." : "",
+  }), [productsData.long_description]);
+
+  // Handle editor content change
+  const handleEditorChange = useCallback((newContent) => {
+    setProductsData(prev => ({
+      ...prev,
+      long_description: newContent
+    }));
+  }, []);
 
   const [varients, setvarients] = useState([
     {
@@ -432,7 +447,7 @@ function Products(props) {
               const updatedImgs = [...singleImgs];
               updatedImgs[index] = res.data.file || res.data.fileUrl;
               setSingleImgs(updatedImgs);
-              toast.success(err?.data?.message)
+              toast.success('File uploaded successfully')
             }
           },
           (err) => {
@@ -629,19 +644,12 @@ function Products(props) {
                 </p>
                 <div className="w-full text-black">
                   <JoditEditor
+                    key="jodit-editor"
                     className="editor max-h-screen overflow-auto"
                     rows={10}
-                    config={{
-                      ...config,
-                      placeholder: !productsData.long_description ? "Start writing..." : "",
-                    }}
+                    config={editorConfig}
                     value={productsData.long_description}
-                    onChange={(newContent) => {
-                      setProductsData((prev) => ({
-                        ...prev,
-                        long_description: newContent,
-                      }));
-                    }}
+                    onChange={handleEditorChange}
 
                   />
                 </div>
@@ -666,7 +674,7 @@ function Products(props) {
                         className="md:grid md:grid-cols-5 grid-cols-1 w-full md:gap-5"
                         id={"field-container-" + i}
                       >
-                        {productsData?.Attribute?.some(attr => attr.name.toLowerCase() === "color") && (
+                        {productsData?.Attribute?.some(attr => attr?.name?.toLowerCase?.() === "color") && (
                           <div className="">
                             <p className="text-gray-800 text-sm font-semibold NunitoSans pb-[10px] pl-[40px]">
                               Color

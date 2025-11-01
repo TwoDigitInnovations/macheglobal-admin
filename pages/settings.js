@@ -55,37 +55,51 @@ function Settings(props) {
     }
   };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    
+    // Check if there are any images to submit
+    if (carouselImg.length === 0) {
+      toast.error("Please add at least one image to the carousel");
+      return;
+    }
 
     props.loader(true);
 
-    let data = {
-      carousel: carouselImg,
-    };
+    try {
+      // Prepare the data with existing carousel items
+      const formattedCarousel = carouselImg.map(item => ({
+        image: item.image,
+        Category: item.Category || null
+      }));
 
-    Api(
-      "post",
-      "user/createOrUpdateImage",
-      data,
-      router
-    ).then(
-      (res) => {
-        props.loader(false);
-        if (res?.success) {
-          setSubmitted(false);
-          toast.success(res?.message || "Banner Uploaded sucessfully")
-        } else {
-          props.loader(false);
-          toast.error(res?.data?.message || "Banner Upload failed")
-        }
-      },
-      (err) => {
-        props.loader(false);
-        console.log(err);
-        toast.error(err?.data?.message || "Banner Upload failed")
+      const data = {
+        carousel: formattedCarousel,
+      };
+
+      console.log("Submitting data:", data); // Debug log
+
+      const res = await Api(
+        "post",
+        "user/createOrUpdateImage",
+        data,
+        router
+      );
+
+      props.loader(false);
+      if (res?.success) {
+        setSubmitted(false);
+        toast.success(res?.message || "Banner Uploaded successfully");
+        // Refresh the carousel data
+        getsetting();
+      } else {
+        toast.error(res?.data?.message || "Banner Upload failed");
       }
-    );
+    } catch (err) {
+      props.loader(false);
+      console.error("Error:", err);
+      toast.error(err?.response?.data?.message || "Banner Upload failed");
+    }
   };
 
   const getsetting = async () => {
@@ -231,9 +245,14 @@ function Settings(props) {
                           });
                           return;
                         }
-                        setCarouselImg([...carouselImg, { image: singleImg, Category: SelectedCategory }]);
+                        // Create a new carousel item with proper null handling for Category
+                        const newCarouselItem = {
+                          image: singleImg,
+                          Category: SelectedCategory || null
+                        };
+                        setCarouselImg([...carouselImg, newCarouselItem]);
                         setSingleImg("");
-                        setSelectedCategory("")
+                        setSelectedCategory("");
                       }}
                     >
                       Add Image

@@ -31,6 +31,7 @@ function SaleProduct(props) {
     props.loader(true);
     Api("get", `sale/getFlashSale?SellerId=${user._id}`, router).then(
       (res) => {
+        console.log(res);
         props.loader(false);
         if (res.status) {
           setSaleData(res.data);

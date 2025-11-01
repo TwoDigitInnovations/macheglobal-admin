@@ -18,6 +18,7 @@ const isAuth = (Component) => {
           router?.pathname === "/inventory" ||
           router?.pathname === "/add-product" ||
           router?.pathname === "/orders" ||
+          router.pathname ==="/products/[id]" ||
           router?.pathname === "/Notification" ||
           router?.pathname === "/SaleProduct" ||
           router?.pathname === "/wallet"  ||
