@@ -14,6 +14,7 @@ import { MdRateReview } from "react-icons/md";
 import { MdContentPasteOff } from "react-icons/md";
 import { BiSolidOffer } from "react-icons/bi";
 import { IoIosArrowDown, IoIosArrowForward } from "react-icons/io";
+import Image from "next/image";
 
 const SidePannel = ({ setOpenTab, openTab }) => {
   const [user, setUser] = useContext(userContext);
@@ -121,7 +122,13 @@ const SidePannel = ({ setOpenTab, openTab }) => {
               className="bg-white pt-5 pb-5 row-span-1 flex items-center justify-center cursor-pointer mx-5 rounded"
               onClick={() => router.push("/")}
             >
-              <p className="text-3xl text-black font-bold"> LOGO</p>
+              <Image
+                src="/logo.png"
+                alt="Logo"
+                width={200}
+                height={200}
+                onError={imageOnError}
+              />
             </div>
 
             <div className="flex flex-col justify-between row-span-4 w-full">
