@@ -61,47 +61,22 @@ function SellerOrders(props) {
         try {
             
             const res = await Api("post", `product/getOrderBySeller?page=${page}&limit=${limit}`, data, router);
-            console.log("Raw API Response:", res);
             
             props.loader(false);
             setIsLoading(false);
 
             if (res?.status) {
-             
-                
                 // Transform the data to include required fields
-                const transformedData = res.data.map((order, index) => {
-                    const transformedOrder = {
-                        ...order,
-                        // Ensure status has a default value if not present
-                        status: order.status || 'pending',
-                        // Ensure user object has required fields
-                        user: {
-                            name: order.user?.name || 'N/A',
-                            email: order.user?.email || 'N/A',
-                            phone: order.user?.phone || 'N/A',
-                            ...order.user
-                        },
-                        // Get seller info from multiple possible locations
-                        sellerInfo: order.sellerInfo || 
-                                  (order.orderItems?.[0]?.sellerInfo) || 
-                                  { name: 'N/A' },
-                        // Format the date for display
-                        formattedDate: moment(order.createdAt).format('DD MMM YYYY')
-                    };
-                    
-                    console.log(`Order ${index + 1}:`, {
-                        orderId: order.orderId,
-                        sellerInfo: transformedOrder.sellerInfo,
-                        orderItems: order.orderItems?.map(item => ({
-                            product: item.product?.name || 'N/A',
-                            seller: item.seller,
-                            sellerInfo: item.sellerInfo
-                        }))
-                    });
-                    
-                    return transformedOrder;
-                });
+                const transformedData = res.data.map((order) => ({
+                    ...order,
+                    status: order.status || 'pending',
+                    user: {
+                        name: order.user?.name || 'N/A',
+                        email: order.user?.email || 'N/A',
+                        phone: order.user?.phone || 'N/A',
+                        ...order.user
+                    }
+                }));
                 
                 setOrders(transformedData);
                 setPagination({
@@ -275,22 +250,8 @@ function SellerOrders(props) {
                     // Get the first order item with seller info
                     const firstItem = row.original.orderItems?.[0];
                     
-                    // Try to get seller name from multiple possible locations
-                    const sellerName = row.original.sellerInfo?.name || 
-                                    firstItem?.sellerInfo?.name ||
-                                    firstItem?.product?.SellerId?.name ||
-                                    'N/A';
-                    
-                    console.log('Seller name for order', row.original.orderId, ':', {
-                        orderId: row.original.orderId,
-                        sellerName: sellerName,
-                        sellerInfo: row.original.sellerInfo,
-                        firstItem: firstItem ? {
-                            seller: firstItem.seller,
-                            sellerInfo: firstItem.sellerInfo,
-                            productSeller: firstItem.product?.SellerId
-                        } : 'No items'
-                    });
+                    // Get seller name from the populated seller field
+                    const sellerName = firstItem?.seller?.name || 'N/A';
                     
                     return (
                         <div className="flex justify-center">

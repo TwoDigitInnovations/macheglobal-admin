@@ -45,6 +45,7 @@ function Inventory(props) {
 
     Api("get", url, {}, router).then(
       (res) => {
+        console.log("res================>", res);
         props.loader(false);
         setProductsList(res.data);
         setPagination(res.pagination);

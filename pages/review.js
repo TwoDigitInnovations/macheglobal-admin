@@ -2,15 +2,11 @@ import React, { useState, useEffect } from "react";
 import {
   Search,
   Calendar,
-  Filter,
   X,
-  Eye,
   Star,
   StarHalf,
   User,
-  Clock,
   Package,
-  Delete,
   ListRestart,
 } from "lucide-react";
 import { Api } from "@/services/service";
@@ -129,38 +125,61 @@ function ReviewPage(props) {
   };
 
   const ReviewCard = ({ review }) => {
-    // Debug: Log the review data
-    console.log('Rendering review:', review);
-    
     // Ensure review data exists before rendering
     if (!review) {
-      console.log('No review data provided');
       return null;
     }
     
-    // Format the date
-    const formattedDate = formatDate(review.createdAt);
+    // Format the date in the style: "22nd August, 2025"
+    const formatFullDate = (dateString) => {
+      const date = new Date(dateString);
+      const day = date.getDate();
+      const month = date.toLocaleString('en-US', { month: 'long' });
+      const year = date.getFullYear();
+      
+      // Add ordinal suffix (st, nd, rd, th)
+      const getOrdinalSuffix = (day) => {
+        if (day > 3 && day < 21) return 'th';
+        switch (day % 10) {
+          case 1: return 'st';
+          case 2: return 'nd';
+          case 3: return 'rd';
+          default: return 'th';
+        }
+      };
+      
+      return `${day}${getOrdinalSuffix(day)} ${month}, ${year}`;
+    };
     
     return (
       <div className="w-full h-auto bg-white border border-gray-200 rounded-lg md:p-4 p-3 shadow-sm hover:shadow-md transition-shadow duration-200 mb-4">
-        <div className="flex justify-between items-start mb-4">
+        <div className="flex md:flex-row flex-col justify-between items-start mb-4 gap-3">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
               <User size={20} className="text-gray-600" />
             </div>
             <div>
+              <p className="text-sm text-gray-500 mb-1">Posted by:</p>
               <h3 className="font-medium text-gray-900">{review.posted_by?.name || 'Anonymous'}</h3>
-              <div className="flex items-center text-sm text-gray-500">
-                <Clock size={14} className="mr-1" />
-                {formatDate(review.createdAt)}
-              </div>
             </div>
           </div>
+          
           <div className="flex items-center space-x-2">
-            <Package size={16} className="text-gray-400" />
-            <span className="text-sm text-gray-500">
-              {review.product?.name || 'Product not available'}
-            </span>
+            <Calendar size={18} className="text-gray-400" />
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Posted on:</p>
+              <p className="font-medium text-gray-900">{formatFullDate(review.createdAt)}</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Package size={18} className="text-gray-400" />
+            <div>
+              {/* <p className="text-sm text-gray-500 mb-1">Product name:</p> */}
+              <p className="font-medium text-gray-900">
+                {review.product?.name || 'Product not available'}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -170,7 +189,7 @@ function ReviewPage(props) {
 
         {review.description && (
           <div className="mb-4">
-            <p className="text-gray-700 text-sm leading-relaxed">
+            <p className="text-gray-700 text-lg font-semibold leading-relaxed">
               {review.description}
             </p>
           </div>
@@ -192,14 +211,14 @@ function ReviewPage(props) {
         <div className="flex justify-end space-x-2 pt-2 border-t border-gray-100">
           <button
             onClick={() => handleViewDetails(review)}
-            className="px-4 py-2 text-sm font-medium text-white bg-primary-500 rounded-lg hover:bg-primary-600 transition-colors"
-            style={{ backgroundColor: primaryColor }}
+            className="px-4 py-2 text-sm font-medium text-white bg-[#FF700099] rounded-lg "
+          
           >
             View Details
           </button>
           <button
             onClick={() => deleteReview(review._id)}
-            className="px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
+            className="px-4 py-2 text-sm font-medium text-white bg-[#E84F4F99] rounded-lg hover:bg-red-600 transition-colors"
           >
             Delete
           </button>
@@ -290,7 +309,7 @@ function ReviewPage(props) {
       </div>
 
       {/* Reviews Grid */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-gray-100 rounded-xl shadow-sm border border-gray-100 p-6">
         <div className="mb-6">
           <h2 className="text-lg font-medium text-gray-900">Product Reviews</h2>
           <p className="text-sm text-gray-500">Manage and moderate customer reviews</p>
