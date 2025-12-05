@@ -16,6 +16,7 @@ import MultiSelect from "@/components/MultiSelect";
 import PopupTable from "@/components/PopupTable";
 import { Eye, ListRestart, Search } from "lucide-react";
 import { indexID } from "@/components/reported/customTableAct";
+import Swal from "sweetalert2";
 
 function Sellers(props) {
     const router = useRouter();
@@ -60,7 +61,7 @@ function Sellers(props) {
     };
 
     useEffect(() => {
-        getuserlist(currentPage, pageSize);
+        getuserlist(currentPage, pageSize, search);
     }, [currentPage, pageSize]);
 
     const handleClose = () => {
@@ -72,29 +73,36 @@ function Sellers(props) {
         setAnchorEl(null);
     };
 
-    const getuserlist = async (page = 1, limit = 10, search) => {
-
+    const getuserlist = async (page = 1, limit = 10, searchQuery = "") => {
         let url = `seller/?page=${page}&limit=${limit}&type=Seller`;
-        if (search) {
-            url += `&search=${search}`;
+        if (searchQuery && searchQuery.trim()) {
+            url += `&search=${encodeURIComponent(searchQuery.trim())}`;
         }
-
 
         props.loader(true);
         Api("get", url, "", router).then(
             (res) => {
                 props.loader(false);
                 console.log("res================>", res);
-                setSellersData(res.data);
+                setSellersData(res.data || []);
                 setPagination({
-                    ...res?.pagination,
-                    itemsPerPage: pageSize,
+                    totalPages: res?.pagination?.totalPages || 1,
+                    currentPage: res?.pagination?.currentPage || page,
+                    itemsPerPage: res?.pagination?.itemsPerPage || limit,
+                    totalItems: res?.pagination?.totalItems || 0,
                 });
             },
             (err) => {
                 props.loader(false);
                 console.log(err);
                 props.toaster({ type: "error", message: err?.message });
+                setSellersData([]);
+                setPagination({
+                    totalPages: 1,
+                    currentPage: 1,
+                    itemsPerPage: limit,
+                    totalItems: 0,
+                });
             }
         );
     };
@@ -102,7 +110,11 @@ function Sellers(props) {
     const updateStatus = async (id, status) => {
         if (!id) {
             console.error('No seller ID provided');
-            props.toaster({ type: "error", message: 'Seller ID is required' });
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Seller ID is required'
+            });
             return;
         }
         
@@ -143,10 +155,13 @@ function Sellers(props) {
                     })
                 );
                 
-                // Show success message
-                props.toaster({
-                    type: "success",
-                    message: message || 'Seller status updated successfully'
+                // Show success message with SweetAlert2
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: message || 'Seller status updated successfully',
+                    timer: 2000,
+                    showConfirmButton: false
                 });
                 
                 // Refresh the list to ensure consistency
@@ -158,9 +173,10 @@ function Sellers(props) {
             const errorMessage = message || 'Failed to update seller status';
             console.error('API returned error:', errorMessage);
             
-            props.toaster({
-                type: "error",
-                message: errorMessage
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: errorMessage
             });
             
             // If seller not found, refresh the list
@@ -181,9 +197,10 @@ function Sellers(props) {
                 errorMessage = error.message;
             }
             
-            props.toaster({ 
-                type: "error", 
-                message: errorMessage
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: errorMessage
             });
             
             // On any error, refresh the list to ensure UI consistency
@@ -393,7 +410,8 @@ function Sellers(props) {
                                 className="flex items-center gap-1 py-2 px-4 rounded-[8px] bg-custom-orange text-black md:text-[16px] text-[14px] font-normal disabled:bg-custom-darkGrayColor/50"
                                 disabled={search.length < 1}
                                 onClick={() => {
-                                    getuserlist(currentPage, 10, search);
+                                    setCurrentPage(1);
+                                    getuserlist(1, pageSize, search);
                                     setSelctDate("");
                                     setSelectedOptions([]);
                                 }}
@@ -406,7 +424,8 @@ function Sellers(props) {
                                 className="flex items-center gap-1 py-2 px-4 rounded-[8px] bg-[#00000020] border border-black text-black md:text-[16px] text-[14px] font-normal"
                                 onClick={() => {
                                     setSearch("");
-                                    getuserlist(currentPage, 10, "");
+                                    setCurrentPage(1);
+                                    getuserlist(1, pageSize, "");
                                     setSelctDate("");
                                 }}
                             >
@@ -621,7 +640,35 @@ function Sellers(props) {
                                         <button
                                             key={index}
                                             className={`text-black text-lg font-bold w-[274px] h-[50px] rounded-[12px] bg-amber-500`}
-                                            onClick={() => updateStatus(popupData?._id, btn.status)}
+                                            onClick={() => {
+                                                // Close the dialog first to avoid z-index issues
+                                                const sellerId = popupData?._id;
+                                                const statusToUpdate = btn.status;
+                                                const labelText = btn.label.toLowerCase();
+                                                
+                                                setviewPopup(false);
+                                                
+                                                // Small delay to ensure dialog closes before showing SweetAlert
+                                                setTimeout(() => {
+                                                    Swal.fire({
+                                                        title: 'Are you sure?',
+                                                        text: `Do you want to ${labelText} this seller?`,
+                                                        icon: 'warning',
+                                                        showCancelButton: true,
+                                                        confirmButtonColor: '#3085d6',
+                                                        cancelButtonColor: '#d33',
+                                                        confirmButtonText: `Yes, ${labelText}!`,
+                                                        cancelButtonText: 'Cancel',
+                                                        customClass: {
+                                                            container: 'swal-high-zindex'
+                                                        }
+                                                    }).then((result) => {
+                                                        if (result.isConfirmed) {
+                                                            updateStatus(sellerId, statusToUpdate);
+                                                        }
+                                                    });
+                                                }, 100);
+                                            }}
                                         >
                                             {btn.label}
                                         </button>
@@ -653,9 +700,8 @@ function Sellers(props) {
                         data={sellersData}
                         pagination={pagination}
                         onPageChange={(page) => setCurrentPage(page)}
-                        currentPage={currentPage}
-                        pageSize={pageSize}
-                        setPageSize={setPageSize}
+                        currentPage={pagination?.currentPage || currentPage}
+                        itemsPerPage={pagination?.itemsPerPage || pageSize}
                     />
                 </div>
             </section>

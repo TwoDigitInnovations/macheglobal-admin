@@ -71,3 +71,13 @@ body {
     -ms-overflow-style: none;
   }
 }
+
+
+/* SweetAlert2 z-index fix for Material-UI Dialog */
+.swal2-container {
+  z-index: 9999 !important;
+}
+
+.swal-high-zindex {
+  z-index: 9999 !important;
+}

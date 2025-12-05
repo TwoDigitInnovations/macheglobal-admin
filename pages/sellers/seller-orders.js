@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import Drawer from '@mui/material/Drawer';
+import Dialog from '@mui/material/Dialog';
 import { IoCloseCircleOutline } from 'react-icons/io5';
 
 function SellerOrders(props) {
@@ -29,37 +30,39 @@ function SellerOrders(props) {
     const [popupData, setPopupData] = useState({});
     const [selectedDate, setSelectedDate] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
-    const [searchParams, setSearchParams] = useState({
-        name: '',
-        email: ''
-    });
+    const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [selectedStatus, setSelectedStatus] = useState(popupData.status || 'pending');
+    const [showStatusDialog, setShowStatusDialog] = useState(false);
+    const [selectedStatus, setSelectedStatus] = useState('');
     const [pagination, setPagination] = useState({
         totalPages: 1,
         currentPage: 1,
         itemsPerPage: 10,
+        totalItems: 0,
     });
     
     // Define primary color for consistent styling
     const primaryColor = '#FF7000'; // Orange color used in the UI
 
     useEffect(() => {
-        fetchOrders(selectedDate, currentPage);
-    }, [currentPage, selectedDate]);
+        fetchOrders(currentPage, selectedDate, searchQuery);
+    }, [currentPage]);
 
-    const fetchOrders = async (selectedDate, page = 1, limit = 10) => {
+    const fetchOrders = async (page = 1, date = '', search = '', limit = 10) => {
         const data = {};
 
-        if (selectedDate) {
-            data.curDate = moment(new Date(selectedDate)).format();
+        if (date && date.trim()) {
+            data.curentDate = moment(new Date(date)).format('YYYY-MM-DD');
+        }
+
+        if (search && search.trim()) {
+            data.search = search.trim();
         }
 
         setIsLoading(true);
         props.loader(true);
 
         try {
-            
             const res = await Api("post", `product/getOrderBySeller?page=${page}&limit=${limit}`, data, router);
             
             props.loader(false);
@@ -85,36 +88,42 @@ function SellerOrders(props) {
                     itemsPerPage: res.pagination?.itemsPerPage || limit,
                     totalItems: res.pagination?.totalItems || res.data.length
                 });
-                setCurrentPage(res.pagination?.currentPage || page);
             } else {
                 console.error('Error in API response:', res);
                 toast.error(res?.data?.message || "Failed to fetch orders");
+                setOrders([]);
+                setPagination({
+                    totalPages: 1,
+                    currentPage: 1,
+                    itemsPerPage: limit,
+                    totalItems: 0
+                });
             }
         } catch (err) {
             console.error("Error fetching orders:", err);
             props.loader(false);
             setIsLoading(false);
             toast.error(err?.data?.message || err?.message || "An error occurred while fetching orders");
+            setOrders([]);
+            setPagination({
+                totalPages: 1,
+                currentPage: 1,
+                itemsPerPage: limit,
+                totalItems: 0
+            });
         }
     };
 
     const handleSearch = () => {
-        fetchOrders(selectedDate, 1);
+        setCurrentPage(1);
+        fetchOrders(1, selectedDate, searchQuery);
     };
-
 
     const handleReset = () => {
         setSelectedDate('');
-        setSearchParams({ name: '', email: '' });
-        setCurrentPage(1)
-    };
-
-    const handleFilterChange = (e) => {
-        const { name, value } = e.target;
-        setSearchParams(prev => ({
-            ...prev,
-            [name]: value
-        }));
+        setSearchQuery('');
+        setCurrentPage(1);
+        fetchOrders(1, '', '');
     };
 
     const updateStatusAPI = (id, status) => {
@@ -123,21 +132,31 @@ function SellerOrders(props) {
             id,
             status
         };
-        Api("post", "user/updateStatus", data, router)
+        Api("post", "orders/updateStatus", data, router)
             .then((res) => {
                 props.loader(false);
                 if (res?.status === true) {
-                    toast.success("Status updated successfully")
-                    fetchOrders(null, currentPage);
+                    toast.success("Status updated successfully");
+                    setShowStatusDialog(false);
+                    setViewPopup(false);
+                    fetchOrders(currentPage, selectedDate, searchQuery);
                 } else {
-                    toast.error(res?.message || "Failed to update status")
+                    toast.error(res?.message || "Failed to update status");
                 }
             })
             .catch((err) => {
                 props.loader(false);
                 console.error("API Error:", err);
-                toast.error(err?.message || "Something went wrong")
+                toast.error(err?.message || "Something went wrong");
             });
+    };
+
+    const handleStatusUpdate = () => {
+        if (!selectedStatus) {
+            toast.error("Please select a status");
+            return;
+        }
+        updateStatusAPI(popupData._id, selectedStatus);
     };
 
 
@@ -291,27 +310,48 @@ function SellerOrders(props) {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-4 overflow-hidden">
                 <div className="p-6">
                     <div className="flex md:flex-row flex-col justify-between gap-4">
-                        <div className="relative">
-                            <label className="block text-[16px]  font-medium text-gray-700 mb-1">Order Date</label>
+                        <div className="flex md:flex-row flex-col gap-4 flex-1">
+                            <div className="relative flex-1">
+                                <label className="block text-[16px] font-medium text-gray-700 mb-1">Search</label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        placeholder="Search by Name, Email, Order ID"
+                                        className="w-full pl-10 pr-4 py-2 border border-gray-300 text-[14px] rounded-[30px] focus:outline-none text-black"
+                                        style={{ focusRing: `${primaryColor}40` }}
+                                    />
+                                    <Search
+                                        size={18}
+                                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                                    />
+                                </div>
+                            </div>
+                            
                             <div className="relative">
-                                <input
-                                    type="date"
-                                    value={selectedDate}
-                                    onChange={(e) => setSelectedDate(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 text-[12px] rounded-[30px] focus:outline-none text-black"
-                                    style={{ focusRing: `${primaryColor}40` }}
-                                />
-                                <Calendar
-                                    size={18}
-                                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                                />
+                                <label className="block text-[16px] font-medium text-gray-700 mb-1">Order Date</label>
+                                <div className="relative">
+                                    <input
+                                        type="date"
+                                        value={selectedDate}
+                                        onChange={(e) => setSelectedDate(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2 border border-gray-300 text-[12px] rounded-[30px] focus:outline-none text-black"
+                                        style={{ focusRing: `${primaryColor}40` }}
+                                    />
+                                    <Calendar
+                                        size={18}
+                                        className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                                    />
+                                </div>
                             </div>
                         </div>
 
                         <div className="flex items-end space-x-3">
                             <button
                                 onClick={handleSearch}
-                                className="flex items-center justify-center px-5 py-2 rounded-lg text-black text-[14px]  font-medium transition-all cursor-pointer"
+                                disabled={!searchQuery && !selectedDate}
+                                className="flex items-center justify-center px-5 py-2 rounded-lg text-black text-[14px] font-medium transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 style={{ backgroundColor: primaryColor }}
                             >
                                 Search
@@ -320,9 +360,8 @@ function SellerOrders(props) {
 
                             <button
                                 onClick={handleReset}
-                                className="flex items-center justify-center text-[14px] px-5 py-2 border border-black  bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-all"
+                                className="flex items-center justify-center text-[14px] px-5 py-2 border border-black bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-all"
                             >
-
                                 Reset
                                 <ListRestart size={18} className="mr-2" />
                             </button>
@@ -576,11 +615,8 @@ function SellerOrders(props) {
                                         <button 
                                             className="px-4 py-2 bg-[#FF700099] text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
                                             onClick={() => {
-                                                const newStatus = prompt('Update status to (processing/shipped/delivered/cancelled):');
-                                                if (newStatus) {
-                                                    updateStatusAPI(popupData._id, newStatus);
-                                                    setViewPopup(false);
-                                                }
+                                                setSelectedStatus(popupData?.status || 'pending');
+                                                setShowStatusDialog(true);
                                             }}
                                         >
                                             Update Status
@@ -592,6 +628,56 @@ function SellerOrders(props) {
                     </div>
                 </Drawer>
             )}
+
+            {/* Status Update Dialog */}
+            <Dialog
+                open={showStatusDialog}
+                onClose={() => setShowStatusDialog(false)}
+                maxWidth="sm"
+                fullWidth
+            >
+                <div className="p-6 bg-white">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-semibold text-gray-900">Update Order Status</h3>
+                        <IoCloseCircleOutline
+                            className="text-gray-500 w-6 h-6 cursor-pointer hover:text-gray-700"
+                            onClick={() => setShowStatusDialog(false)}
+                        />
+                    </div>
+                    
+                    <div className="mb-6">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Select New Status
+                        </label>
+                        <select
+                            value={selectedStatus}
+                            onChange={(e) => setSelectedStatus(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900"
+                        >
+                            <option value="pending">Pending</option>
+                            <option value="processing">Processing</option>
+                            <option value="shipped">Shipped</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+
+                    <div className="flex justify-end space-x-3">
+                        <button
+                            onClick={() => setShowStatusDialog(false)}
+                            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleStatusUpdate}
+                            className="px-4 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors"
+                        >
+                            Update Status
+                        </button>
+                    </div>
+                </div>
+            </Dialog>
 
         </section>
     );
