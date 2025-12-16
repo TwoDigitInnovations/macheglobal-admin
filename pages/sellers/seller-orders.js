@@ -539,29 +539,30 @@ function SellerOrders(props) {
                                     </div>
                                 </div>
 
-                                {/* Status Badge */}
-                                <div className="flex items-center justify-between bg-gray-50 p-4 rounded-lg mb-4">
-                                    <div className="flex items-center">
-                                        <div className={`w-3 h-3 rounded-full mr-2 ${
-                                            popupData?.status === 'delivered' || popupData?.status === 'completed' 
-                                                ? 'bg-green-500' 
-                                                : popupData?.status === 'cancelled' 
-                                                    ? 'bg-red-500' 
-                                                    : 'bg-blue-500'
-                                        }`}></div>
-                                        <span className="font-medium text-gray-700">
-                                            {popupData?.status === 'delivered' 
-                                                ? 'Delivered' 
-                                                : popupData?.status === 'completed'
-                                                    ? 'Completed'
-                                                    : popupData?.status === 'cancelled'
-                                                        ? 'Cancelled'
-                                                        : popupData?.status || 'Processing'}
+                                {/* Order Status Section */}
+                                <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4">
+                                    <h4 className="font-medium text-gray-800 mb-3">Order Status</h4>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <span className="text-sm text-gray-600">Current Status:</span>
+                                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                            popupData?.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                                            popupData?.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                            popupData?.status === 'returned' ? 'bg-orange-100 text-orange-800' :
+                                            popupData?.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
+                                            popupData?.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                                            'bg-gray-100 text-gray-800'
+                                        }`}>
+                                            {popupData?.status ? popupData.status.charAt(0).toUpperCase() + popupData.status.slice(1) : 'Pending'}
                                         </span>
                                     </div>
-                                    <span className="text-sm text-gray-500">
-                                        {popupData?.createdAt ? new Date(popupData.createdAt).toLocaleTimeString() : ''}
-                                    </span>
+                                    
+                                    {popupData?.refundedToCredit && (
+                                        <div className="bg-green-50 border border-green-200 rounded p-3">
+                                            <p className="text-sm text-green-700">
+                                                ✓ Refunded ${popupData?.refundAmount?.toFixed(2) || '0.00'} to customer credit balance
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Customer Information */}
@@ -598,22 +599,33 @@ function SellerOrders(props) {
                         </div>
 
                         {/* Action Buttons - Fixed at Bottom */}
-                        <div className="fixed bottom-0 right-0 bg-white px-4 py-3 border-t border-gray-200 md:w-[43vw] w-[380px] shadow-md">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <p className="text-sm text-gray-500">Total Amount</p>
-                                    <p className="text-lg font-bold">${popupData?.totalPrice?.toFixed(2) || '0.00'}</p>
+                        <div className="fixed bottom-0 right-0 bg-white px-4 py-4 border-t border-gray-200 md:w-[43vw] w-[380px] shadow-md">
+                            <div className="space-y-3">
+                                {/* Total Amount */}
+                                <div className="flex justify-between items-center pb-3 border-b border-gray-200">
+                                    <div>
+                                        <p className="text-sm text-gray-500">Total Amount</p>
+                                        <p className="text-lg font-bold">${popupData?.totalPrice?.toFixed(2) || '0.00'}</p>
+                                    </div>
+                                    {popupData?.refundedToCredit && (
+                                        <div className="bg-green-50 px-3 py-1 rounded-full">
+                                            <p className="text-xs text-green-700 font-medium">✓ Refunded</p>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="flex space-x-3">
+
+                                {/* Action Buttons */}
+                                <div className="flex gap-2">
                                     <button 
-                                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                                        className="flex-1 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
                                         onClick={() => setViewPopup(false)}
                                     >
                                         Close
                                     </button>
-                                    {popupData?.status !== 'cancelled' && popupData?.status !== 'delivered' && (
+                                    {popupData?.status !== 'cancelled' && popupData?.status !== 'returned' && popupData?.status !== 'delivered' && (
                                         <button 
-                                            className="px-4 py-2 bg-[#FF700099] text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                                            className="flex-1 py-2 rounded-lg text-white font-medium hover:opacity-90 transition-opacity"
+                                            style={{ backgroundColor: primaryColor }}
                                             onClick={() => {
                                                 setSelectedStatus(popupData?.status || 'pending');
                                                 setShowStatusDialog(true);
@@ -637,45 +649,76 @@ function SellerOrders(props) {
                 fullWidth
             >
                 <div className="p-6 bg-white">
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex justify-between items-center mb-6">
                         <h3 className="text-xl font-semibold text-gray-900">Update Order Status</h3>
                         <IoCloseCircleOutline
                             className="text-gray-500 w-6 h-6 cursor-pointer hover:text-gray-700"
                             onClick={() => setShowStatusDialog(false)}
                         />
                     </div>
-                    
+
                     <div className="mb-6">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Select New Status
-                        </label>
-                        <select
-                            value={selectedStatus}
-                            onChange={(e) => setSelectedStatus(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900"
-                        >
-                            <option value="pending">Pending</option>
-                            <option value="processing">Processing</option>
-                            <option value="shipped">Shipped</option>
-                            <option value="delivered">Delivered</option>
-                            <option value="cancelled">Cancelled</option>
-                        </select>
+                        <p className="text-sm text-gray-600 mb-4">Current Status: <span className="font-semibold">{popupData?.status || 'Pending'}</span></p>
+                        
+                        <div className="space-y-2">
+                            <button 
+                                className="w-full py-3 rounded-lg text-white font-medium hover:opacity-90 transition-opacity text-left px-4"
+                                style={{ backgroundColor: '#FF700099' }}
+                                onClick={() => {
+                                    updateStatusAPI(popupData._id, 'processing');
+                                }}
+                            >
+                                Processing
+                            </button>
+                            <button 
+                                className="w-full py-3 rounded-lg text-white font-medium hover:opacity-90 transition-opacity text-left px-4"
+                                style={{ backgroundColor: '#FF700099' }}
+                                onClick={() => {
+                                    updateStatusAPI(popupData._id, 'shipped');
+                                }}
+                            >
+                                Shipped
+                            </button>
+                            <button 
+                                className="w-full py-3 rounded-lg text-white font-medium hover:opacity-90 transition-opacity text-left px-4"
+                                style={{ backgroundColor: '#FF700099' }}
+                                onClick={() => {
+                                    updateStatusAPI(popupData._id, 'delivered');
+                                }}
+                            >
+                                Delivered
+                            </button>
+                            <button 
+                                className="w-full py-3 rounded-lg text-white font-medium hover:opacity-90 transition-opacity text-left px-4"
+                                style={{ backgroundColor: '#FF700099' }}
+                                onClick={() => {
+                                    if (window.confirm('Mark this order as returned? Amount will be refunded to customer credit balance.')) {
+                                        updateStatusAPI(popupData._id, 'returned');
+                                    }
+                                }}
+                            >
+                                Returned
+                            </button>
+                            <button 
+                                className="w-full py-3 rounded-lg text-white font-medium hover:opacity-90 transition-opacity text-left px-4"
+                                style={{ backgroundColor: '#FF700099' }}
+                                onClick={() => {
+                                    if (window.confirm('Are you sure you want to cancel this order? Amount will be refunded to customer credit balance.')) {
+                                        updateStatusAPI(popupData._id, 'cancelled');
+                                    }
+                                }}
+                            >
+                                Cancel Order
+                            </button>
+                        </div>
                     </div>
 
-                    <div className="flex justify-end space-x-3">
-                        <button
-                            onClick={() => setShowStatusDialog(false)}
-                            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleStatusUpdate}
-                            className="px-4 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors"
-                        >
-                            Update Status
-                        </button>
-                    </div>
+                    <button 
+                        className="w-full py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                        onClick={() => setShowStatusDialog(false)}
+                    >
+                        Close
+                    </button>
                 </div>
             </Dialog>
 

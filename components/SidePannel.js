@@ -71,6 +71,12 @@ const SidePannel = ({ setOpenTab, openTab }) => {
       access: ["Admin"],
     },
     {
+      href: "/coupons",
+      title: "Coupons",
+      img: <BiSolidOffer className="text-3xl" />,
+      access: ["Admin"],
+    },
+    {
       href: "/review",
       title: "Reviews",
       img: <MdRateReview className="text-3xl" />,
