@@ -31,7 +31,8 @@ export default function Login(props) {
       const res = await Api("post", "auth/login", { ...userDetail }, router);
       if (res?.status) {
         const user = res.data.user;
-        if (user.role === "Admin" || user.role === "Seller") {
+        // Only allow Admin role to login to admin panel
+        if (user.role === "Admin") {
           localStorage.setItem("userDetail", JSON.stringify(user));
           localStorage.setItem("token", res.data?.token);
           setUser(user);
@@ -40,11 +41,19 @@ export default function Login(props) {
           router.push("/");
           props.loader(false);
           setLoading(false);
+        } else if (user.role === "Seller" || user.role === "SELLER") {
+          toast.error("You are not an admin. Please login to your seller account.")
+          props.loader(false);
+          setLoading(false);
         } else {
-          toast.error(res.data.message || "You are not authorized")
+          toast.error("You are not authorized to access admin panel")
+          props.loader(false);
+          setLoading(false);
         }
       } else {
         toast.error("Login failed")
+        props.loader(false);
+        setLoading(false);
       }
     } catch (err) {
       props.loader(false);
