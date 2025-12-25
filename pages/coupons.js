@@ -3,6 +3,7 @@ import { Api } from '../services/service';
 import { useRouter } from 'next/router';
 import { toast } from 'react-toastify';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 const Coupons = (props) => {
   const router = useRouter();
@@ -69,14 +70,30 @@ const Coupons = (props) => {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this coupon?')) return;
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#FF7000',
+      cancelButtonColor: '#6B7280',
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!result.isConfirmed) return;
     
     props.loader(true);
     try {
       const res = await Api('delete', `coupon/deleteCoupon/${id}`, {}, router);
       props.loader(false);
       if (res?.status) {
-        toast.success('Coupon deleted successfully');
+        Swal.fire({
+          title: 'Deleted!',
+          text: 'Coupon has been deleted successfully.',
+          icon: 'success',
+          confirmButtonColor: '#FF7000'
+        });
         getCoupons();
       }
     } catch (err) {
@@ -243,12 +260,44 @@ const Coupons = (props) => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div 
+          className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            // Close modal when clicking on backdrop
+            if (e.target === e.currentTarget) {
+              setShowModal(false);
+              resetForm();
+            }
+          }}
+        >
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <h2 className="text-2xl text-gray-800 font-bold mb-6">
-                {editingCoupon ? 'Edit Coupon' : 'Create New Coupon'}
-              </h2>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl text-gray-800 font-bold">
+                  {editingCoupon ? 'Edit Coupon' : 'Create New Coupon'}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowModal(false);
+                    resetForm();
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+                  aria-label="Close modal"
+                >
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
               
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

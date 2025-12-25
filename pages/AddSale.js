@@ -278,6 +278,16 @@ function AddSale(props) {
       return;
     }
 
+    // Check for past start dates
+    const now = new Date();
+    const pastDateItems = saleItems.filter(item =>
+      new Date(item.startDateTime) < now
+    );
+
+    if (pastDateItems.length > 0) {
+      toast.error("Start date cannot be in the past. Please select a current or future date.")
+      return;
+    }
 
     const dateValidationErrors = saleItems.filter(item =>
       new Date(item.endDateTime) <= new Date(item.startDateTime)
@@ -544,6 +554,7 @@ function AddSale(props) {
                     onChange={(e) =>
                       updateSaleItem(index, "startDateTime", e.target.value)
                     }
+                    min={new Date().toISOString().slice(0, 16)}
                     className="block w-full border border-gray-300 rounded-lg shadow-sm p-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-custom-orange/20 focus:border-custom-orange transition-colors"
                   />
                 </div>
@@ -559,7 +570,7 @@ function AddSale(props) {
                     onChange={(e) =>
                       updateSaleItem(index, "endDateTime", e.target.value)
                     }
-                    min={item.startDateTime}
+                    min={item.startDateTime || new Date().toISOString().slice(0, 16)}
                     className="block w-full border border-gray-300 rounded-lg shadow-sm p-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-custom-orange/20 focus:border-custom-orange transition-colors"
                   />
                 </div>
