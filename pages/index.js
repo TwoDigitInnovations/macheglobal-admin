@@ -94,7 +94,7 @@ function Home(props) {
   useEffect(() => {
     const getMonthlySales = async () => {
       props.loader(true);
-      Api("get", `getMonthlySales?year=${selectedYear}`, "", router).then(
+      Api("get", `product/getMonthlySales?year=${selectedYear}`, "", router).then(
         (res) => {
           console.log("res================>", res);
           props.loader(false);
@@ -134,14 +134,14 @@ function Home(props) {
             value={dashboardStats.pendingOrders}
             icon={<ArchiveRestore size={45} />}
             accentColor="#44DD22E3"
-            message={`${Math.min(5, dashboardStats.pendingOrders)} need shipping today`}
+            message={`${dashboardStats.pendingOrders} need shipping today`}
           />
           <ModernStatsCard
             title="Products in Stock"
             value={dashboardStats.productsInStock.toLocaleString()}
             icon={<Warehouse size={45} />}
             accentColor="#E84F4F"
-            message={`${Math.min(5, Math.floor(dashboardStats.productsInStock * 0.1))} low-stock alerts`}
+            message={`Total inventory across all products`}
           />
           <ModernStatsCard
             title="Earnings"
@@ -155,7 +155,7 @@ function Home(props) {
             value={dashboardStats.refundRequests}
             icon={<HandCoins size={45} />}
             accentColor="#E84F4F"
-            message={`${Math.min(2, dashboardStats.refundRequests)} pending review`}
+            message={`${dashboardStats.refundRequests} pending review`}
           />
           <ModernStatsCard
             title="Payouts Completed"
