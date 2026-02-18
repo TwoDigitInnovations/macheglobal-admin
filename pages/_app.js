@@ -36,7 +36,9 @@ export default function App({ Component, pageProps }) {
     if (user) {
       setUser(JSON.parse(user));
     } else {
-      if (router.route !== "/login") {
+      // Public routes that don't require authentication
+      const publicRoutes = ["/login", "/privacy"];
+      if (!publicRoutes.includes(router.route)) {
         router.push("/login");
       }
     }
@@ -49,17 +51,27 @@ export default function App({ Component, pageProps }) {
           <Loader open={open} />
           <ToastContainer position="top-right" autoClose={3000} />
 
-          <Layout loader={setOpen} toaster={setToast}>
-            <Loader open={open} />
-            {user && (
-              <Component
-                {...pageProps}
-                loader={setOpen}
-                toaster={setToast}
-                user={user}
-              />
-            )}
-          </Layout>
+          {router.route === "/privacy" ? (
+            // Public page without layout
+            <Component
+              {...pageProps}
+              loader={setOpen}
+              toaster={setToast}
+            />
+          ) : (
+            // Admin pages with layout
+            <Layout loader={setOpen} toaster={setToast}>
+              <Loader open={open} />
+              {user && (
+                <Component
+                  {...pageProps}
+                  loader={setOpen}
+                  toaster={setToast}
+                  user={user}
+                />
+              )}
+            </Layout>
+          )}
         </userContext.Provider>
       </dataContext.Provider>
     </>
