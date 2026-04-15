@@ -41,6 +41,9 @@ function Sellers(props) {
     const [selectedId, setSelectedId] = useState("");
     const open = Boolean(anchorEl);
     const [selectedOptions, setSelectedOptions] = useState([]);
+    const [globalCommission, setGlobalCommission] = useState(2);
+    const [editingCommission, setEditingCommission] = useState(null);
+    const [commissionInput, setCommissionInput] = useState("");
     const options = ["Products", "Orders", "Employees", "Returns", "Refunds"];
     const handleClickListItem = (event) => {
         setAnchorEl(event.currentTarget);
@@ -62,6 +65,7 @@ function Sellers(props) {
 
     useEffect(() => {
         getuserlist(currentPage, pageSize, search);
+        fetchGlobalCommission();
     }, [currentPage, pageSize]);
 
     const handleClose = () => {
@@ -71,6 +75,114 @@ function Sellers(props) {
         setSelectedId("");
         setSelectedOptions([]);
         setAnchorEl(null);
+        setEditingCommission(null);
+        setCommissionInput("");
+    };
+
+    const fetchGlobalCommission = async () => {
+        try {
+            const res = await Api("get", "user/getsetting", "", router);
+            if (res?.setting && res.setting.length > 0) {
+                setGlobalCommission(res.setting[0].globalCommissionRate || 2);
+            }
+        } catch (err) {
+            console.log("Error fetching global commission:", err);
+        }
+    };
+
+    const updateGlobalCommission = async (newRate) => {
+        try {
+            props.loader(true);
+            const res = await Api("post", "user/updateGlobalCommission", {
+                globalCommissionRate: parseFloat(newRate)
+            }, router);
+            
+            console.log('Global commission update response:', res);
+            
+            // Check for success in response
+            if (res.success || res.data?.success) {
+                // Update state first
+                const newRateValue = parseFloat(newRate);
+                setGlobalCommission(newRateValue);
+                
+                // Force update table by refreshing sellers data
+                await getuserlist(currentPage, pageSize, search);
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: `Global commission updated to ${newRateValue}%. All sellers without custom rates will now use this rate.`,
+                    timer: 3000,
+                    showConfirmButton: false
+                });
+            } else {
+                throw new Error(res.message || 'Failed to update');
+            }
+        } catch (err) {
+            console.error('Error updating global commission:', err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: err?.message || 'Failed to update global commission'
+            });
+            // Refresh to get current value
+            fetchGlobalCommission();
+        } finally {
+            props.loader(false);
+        }
+    };
+
+    const updateSellerCommission = async (sellerId, rate) => {
+        try {
+            props.loader(true);
+            const res = await Api("post", "user/updateSellerCommission", {
+                sellerId: sellerId,
+                commissionRate: rate === "" || rate === null ? null : parseFloat(rate)
+            }, router);
+            
+            console.log('Seller commission update response:', res);
+            
+            // Check for success in response
+            if (res.success || res.data?.success) {
+                // Update local state
+                setSellersData(prevSellers =>
+                    prevSellers.map(seller => {
+                        if (seller.userId?._id === sellerId) {
+                            return {
+                                ...seller,
+                                userId: {
+                                    ...seller.userId,
+                                    commissionRate: rate === "" || rate === null ? null : parseFloat(rate)
+                                }
+                            };
+                        }
+                        return seller;
+                    })
+                );
+                
+                setEditingCommission(null);
+                setCommissionInput("");
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: 'Seller commission rate updated successfully',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            } else {
+                throw new Error(res.message || 'Failed to update');
+            }
+        } catch (err) {
+            console.error('Error updating seller commission:', err);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: err?.message || 'Failed to update seller commission'
+            });
+        } finally {
+            props.loader(false);
+        }
     };
 
     const getuserlist = async (page = 1, limit = 10, searchQuery = "") => {
@@ -118,7 +230,6 @@ function Sellers(props) {
             return;
         }
         
-        setviewPopup(false);
         try {
             props.loader(true);
             console.log('Updating seller status:', { SellerId: id, Status: status });
@@ -154,6 +265,24 @@ function Sellers(props) {
                         return seller;
                     })
                 );
+                
+                // Update popupData if it's the same seller
+                setPopupData(prevData => {
+                    if (prevData?._id === id) {
+                        return {
+                            ...prevData,
+                            status: status,
+                            userId: prevData.userId ? {
+                                ...prevData.userId,
+                                status: status
+                            } : prevData.userId
+                        };
+                    }
+                    return prevData;
+                });
+                
+                // Close popup after update
+                setviewPopup(false);
                 
                 // Show success message with SweetAlert2
                 Swal.fire({
@@ -362,31 +491,197 @@ function Sellers(props) {
                 Cell: status,
             },
             {
+                Header: "Commission %",
+                Cell: ({ row }) => {
+                    const seller = row.original;
+                    const sellerId = seller.userId?._id;
+                    const sellerCommission = seller.userId?.commissionRate;
+                    const displayRate = sellerCommission !== null && sellerCommission !== undefined 
+                        ? sellerCommission 
+                        : globalCommission;
+                    const isCustom = sellerCommission !== null && sellerCommission !== undefined;
+                    
+                    return (
+                        <div className="flex flex-col items-center justify-center gap-1">
+                            <div className="flex items-center gap-1">
+                                <span className={`text-base font-semibold ${isCustom ? "text-blue-600" : "text-gray-600"}`}>
+                                    {displayRate}%
+                                </span>
+                                {isCustom && (
+                                    <span className="text-xs text-blue-500" title="Custom rate">
+                                        ★
+                                    </span>
+                                )}
+                            </div>
+                            <button
+                                onClick={() => {
+                                    const currentRate = sellerCommission !== null && sellerCommission !== undefined 
+                                        ? sellerCommission 
+                                        : '';
+                                    
+                                    Swal.fire({
+                                        title: 'Edit Commission Rate',
+                                        html: `
+                                            <div style="text-align: left; margin-bottom: 15px;">
+                                                <p style="margin-bottom: 8px;"><strong>Seller:</strong> ${seller.userId?.name || seller.ownerName || 'N/A'}</p>
+                                                <p style="margin-bottom: 8px;"><strong>Current:</strong> ${displayRate}%</p>
+                                                <p style="margin-bottom: 15px; color: #666; font-size: 14px;"><strong>Global Rate:</strong> ${globalCommission}%</p>
+                                            </div>
+                                        `,
+                                        input: 'text',
+                                        inputLabel: 'Commission Rate (%)',
+                                        inputValue: currentRate,
+                                        inputPlaceholder: 'Enter rate (e.g., 2.5) or leave empty for global',
+                                        showCancelButton: true,
+                                        showDenyButton: isCustom,
+                                        confirmButtonText: 'Save',
+                                        denyButtonText: 'Reset to Global',
+                                        cancelButtonText: 'Cancel',
+                                        confirmButtonColor: '#3085d6',
+                                        denyButtonColor: '#d33',
+                                        customClass: {
+                                            container: 'swal-high-zindex'
+                                        },
+                                        didOpen: () => {
+                                            const swalContainer = document.querySelector('.swal2-container');
+                                            if (swalContainer) {
+                                                swalContainer.style.zIndex = '99999';
+                                            }
+                                        },
+                                        inputValidator: (value) => {
+                                            if (!value || value.trim() === '') {
+                                                return null;
+                                            }
+                                            const num = parseFloat(value);
+                                            if (isNaN(num)) {
+                                                return 'Please enter a valid number';
+                                            }
+                                            if (num < 0 || num > 100) {
+                                                return 'Commission must be between 0 and 100';
+                                            }
+                                            return null;
+                                        }
+                                    }).then((result) => {
+                                        if (result.isConfirmed) {
+                                            const value = result.value;
+                                            updateSellerCommission(
+                                                sellerId,
+                                                value === '' || value === null ? null : parseFloat(value)
+                                            );
+                                        } else if (result.isDenied) {
+                                            updateSellerCommission(sellerId, null);
+                                        }
+                                    });
+                                }}
+                                className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded transition-colors"
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    );
+                },
+            },
+            {
                 Header: "Info",
                 Cell: info,
             },
         ],
-        []
+        [globalCommission, updateSellerCommission]
     );
 
     const actionButtons = {
         pending: [
-            { label: "Verify", status: "verified", color: "bg-custom-darkpurple" },
-            { label: "Suspend", status: "suspend", color: "bg-custom-darkRed" }
+            { label: "Approve", status: "approved", color: "bg-custom-darkpurple" },
+            { label: "Reject", status: "rejected", color: "bg-custom-darkRed" }
+        ],
+        approved: [
+            { label: "Reject", status: "rejected", color: "bg-custom-darkRed" }
+        ],
+        rejected: [
+            { label: "Approve", status: "approved", color: "bg-custom-darkpurple" }
         ],
         verified: [
-            { label: "Suspend", status: "suspend", color: "bg-custom-darkRed" }
+            { label: "Reject", status: "rejected", color: "bg-custom-darkRed" }
         ],
         suspend: [
-            { label: "Verify", status: "verified", color: "bg-red-500" }
+            { label: "Approve", status: "approved", color: "bg-custom-darkpurple" }
         ]
     };
     return (
         <section className=" w-full h-full bg-transparent px-4 py-6">
-            <p className="text-black font-bold  md:text-[32px] text-2xl">
-                Sellers List
-            </p>
-            <section className="px-1 pt-1 md:pb-32 pb-28 bg-white h-full rounded-[12px] overflow-auto mt-3">
+            <div className="flex justify-between items-center mb-3">
+                <p className="text-black font-bold  md:text-[32px] text-2xl">
+                    Sellers List
+                </p>
+                <div className="flex items-center gap-3 bg-white px-4 py-3 rounded-lg border border-gray-200 shadow-sm">
+                    <div className="flex flex-col">
+                        <span className="text-xs text-gray-500 mb-1">
+                            Global Commission Rate
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-2xl font-bold text-blue-600">
+                                {globalCommission}%
+                            </span>
+                            <button
+                                onClick={() => {
+                                    Swal.fire({
+                                        title: 'Update Global Commission Rate',
+                                        html: `
+                                            <div style="text-align: left; margin-bottom: 15px;">
+                                                <p style="margin-bottom: 8px;"><strong>Current Rate:</strong> ${globalCommission}%</p>
+                                                <p style="margin-bottom: 15px; color: #666; font-size: 14px;">This rate applies to all sellers without a custom rate</p>
+                                            </div>
+                                        `,
+                                        input: 'text',
+                                        inputLabel: 'New Commission Rate (%)',
+                                        inputValue: globalCommission,
+                                        inputPlaceholder: 'Enter new rate (e.g., 2.5)',
+                                        showCancelButton: true,
+                                        confirmButtonText: 'Update Rate',
+                                        cancelButtonText: 'Cancel',
+                                        confirmButtonColor: '#3085d6',
+                                        cancelButtonColor: '#6c757d',
+                                        customClass: {
+                                            container: 'swal-high-zindex'
+                                        },
+                                        didOpen: () => {
+                                            // Ensure SweetAlert is clickable
+                                            const swalContainer = document.querySelector('.swal2-container');
+                                            if (swalContainer) {
+                                                swalContainer.style.zIndex = '99999';
+                                            }
+                                        },
+                                        inputValidator: (value) => {
+                                            if (!value || value.trim() === '') {
+                                                return 'Please enter a commission rate';
+                                            }
+                                            
+                                            const num = parseFloat(value);
+                                            if (isNaN(num)) {
+                                                return 'Please enter a valid number';
+                                            }
+                                            
+                                            if (num < 0 || num > 100) {
+                                                return 'Commission must be between 0 and 100';
+                                            }
+                                            
+                                            return null;
+                                        }
+                                    }).then((result) => {
+                                        if (result.isConfirmed) {
+                                            updateGlobalCommission(parseFloat(result.value));
+                                        }
+                                    });
+                                }}
+                                className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm font-semibold transition-colors"
+                            >
+                                Edit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <section className="px-1 pt-1 md:pb-40 pb-36 bg-white h-full rounded-[12px] overflow-auto mt-3">
 
                 <div className="bg-white border border-gray-200 w-full rounded-[10px] py-5 px-5 md:py-0 md:px-0">
                     <div className="flex flex-col md:flex-row md:justify-between justify-start items-start md:items-center w-full h-full py-3.5 md:px-4 ">
@@ -589,20 +884,11 @@ function Sellers(props) {
                                                 {(popupData?.stats?.totalTax)}
                                             </p>
                                         </div>
-                                        {/* <button
-                      className="text-white bg-custom-darkpurple rounded w-36 h-[30px] mt-2"
-                      onClick={() =>
-                        router.push(
-                          `/sellers-product?seller_id=${popupData?._id}`
-                        )
-                      }
-                    >
-                      Seller Products
-                    </button> */}
                                     </div>
                                 </div>
                             </div>
-                            <p className="text-custom-black text-base font-bold pt-2">
+
+                            <p className="text-custom-black text-base font-bold pt-4 mt-2">
                                 Uploaded Document
                             </p>
 

@@ -112,9 +112,25 @@ function Inventory(props) {
   };
 
   const piece = ({ row }) => {
+    // Get stock based on product type
+    let stock = 0;
+    
+    if (row.original.productType === 'simple' && row.original.simpleProduct) {
+      // Simple product - get from simpleProduct.stock
+      stock = row.original.simpleProduct.stock || 0;
+    } else if (row.original.variants && row.original.variants.length > 0) {
+      // Variable product - sum all variant stocks
+      stock = row.original.variants.reduce((total, variant) => total + (variant.stock || 0), 0);
+    } else if (row.original.pieces !== undefined) {
+      // Fallback to pieces if available
+      stock = row.original.pieces;
+    }
+    
     return (
       <div className="p-4 flex flex-col items-center justify-center">
-        <p className="text-black text-base font-normal">{row.original.pieces}</p>
+        <p className={`text-base font-normal ${stock <= 0 ? 'text-red-600' : 'text-black'}`}>
+          {stock}
+        </p>
       </div>
     );
   };
