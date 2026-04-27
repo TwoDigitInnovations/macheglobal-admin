@@ -417,14 +417,14 @@ function Sellers(props) {
                         setPopupData(row.original);
                         setSelectedId(row.original?._id);
                         
-                        // Collect all images (logo + documents)
+                        // Collect all images with labels (logo first, then documents)
                         const docs = [];
                         if (row.original?.logo?.url) {
-                            docs.push({ img: row.original.logo.url });
+                            docs.push({ img: row.original.logo.url, label: 'Store Logo' });
                         }
                         if (row.original?.documents?.length > 0) {
-                            row.original.documents.forEach(doc => {
-                                docs.push({ img: doc.url });
+                            row.original.documents.forEach((doc, index) => {
+                                docs.push({ img: doc.url, label: `Document ${index + 1}` });
                             });
                         }
                         setdriverdata(docs.length > 0 ? docs : []);
@@ -748,19 +748,19 @@ function Sellers(props) {
                                 <div className="col-span-6">
                                     <div className="md:flex flex-row justify-start items-start">
                                         <Avatar
-                                            // alt={singleData.username}
-                                            // src={singleData.profile}
+                                            alt={popupData?.storeName || popupData?.ownerName}
+                                            src={popupData?.logo?.url}
                                             sx={{ width: 60, height: 60 }}
                                         />
                                         <div className="flex flex-col justify-start items-start md:pl-5">
                                             <p className="text-base font-bold text-custom-black">
-                                                {popupData?.username}
+                                                {popupData?.storeName || popupData?.username}
                                             </p>
                                             <p className="text-base font-semibold text-custom-newBlack">
                                                 {popupData?.email}
                                             </p>
                                             <p className="text-sm font-semibold text-custom-black">
-                                                {popupData?.number}
+                                                {popupData?.phone || popupData?.number}
                                             </p>
 
                                             <button
@@ -889,34 +889,43 @@ function Sellers(props) {
                             </div>
 
                             <p className="text-custom-black text-base font-bold pt-4 mt-2">
-                                Uploaded Document
+                                Uploaded Documents
                             </p>
 
-                            <Swiper
-                                navigation={true}
-                                modules={[Navigation]}
-                                className="mySwiper mt-5 md:w-[880px] w-68"
-                                onRealIndexChange={(newindex) =>
-                                    setCuurentIndex(newindex.activeIndex)
-                                }
-                                onSlideChange={() => console.log("slide change")}
-                                onSwiper={(swiper) => console.log(swiper)}
-                            >
-                                {driverdata?.map((item, i) => (
-                                    <SwiperSlide onKeyUpCapture={i}>
-                                        <div className="w-full flex justify-center">
-                                            <div className="md:w-80 md:h-64 w-60 h-48 relative rounded-lg">
-                                                <img
-                                                    src={item?.img}
-                                                    alt="icon"
-                                                    layout="responsive"
-                                                    className="rounded-sm md:w-80 md:h-64 w-60 h-48 object-contain"
-                                                />
+                            {driverdata && driverdata.length > 0 ? (
+                                <Swiper
+                                    navigation={true}
+                                    modules={[Navigation]}
+                                    className="mySwiper mt-5 md:w-[880px] w-68"
+                                    onRealIndexChange={(newindex) =>
+                                        setCuurentIndex(newindex.activeIndex)
+                                    }
+                                    onSlideChange={() => console.log("slide change")}
+                                    onSwiper={(swiper) => console.log(swiper)}
+                                >
+                                    {driverdata?.map((item, i) => (
+                                        <SwiperSlide key={i}>
+                                            <div className="w-full flex flex-col items-center justify-center">
+                                                <div className="md:w-80 md:h-64 w-60 h-48 relative rounded-lg">
+                                                    <img
+                                                        src={item?.img}
+                                                        alt={item?.label || `Document ${i + 1}`}
+                                                        layout="responsive"
+                                                        className="rounded-sm md:w-80 md:h-64 w-60 h-48 object-contain"
+                                                    />
+                                                </div>
+                                                {item?.label && (
+                                                    <p className="text-sm font-semibold text-gray-700 mt-3 bg-gray-100 px-4 py-2 rounded-full">
+                                                        {item.label}
+                                                    </p>
+                                                )}
                                             </div>
-                                        </div>
-                                    </SwiperSlide>
-                                ))}
-                            </Swiper>
+                                        </SwiperSlide>
+                                    ))}
+                                </Swiper>
+                            ) : (
+                                <p className="text-gray-500 text-center mt-5">No documents uploaded</p>
+                            )}
 
 
 
